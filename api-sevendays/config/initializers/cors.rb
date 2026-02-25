@@ -7,10 +7,12 @@
 
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
-    origins_list = ENV.fetch("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
-                        .split(",")
-                        .map(&:strip)
-                        .reject(&:empty?)
+    default_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    origins_list = ENV.fetch("CORS_ORIGINS", default_origins.join(","))
+                      .split(",")
+                      .map(&:strip)
+                      .reject(&:empty?)
+    origins_list = default_origins if origins_list.empty?
     origins(*origins_list)
 
     resource "*",
