@@ -88,6 +88,7 @@ services:
     working_dir: /app
     environment:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:${API_PORT:-3001}
+      SEVENDAYS_API_INTERNAL_URL: http://api:3001
       WATCHPACK_POLLING: "true"
     volumes:
       - ./app-sevendays:/app
