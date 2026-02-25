@@ -11,10 +11,10 @@ import homePageBgImage from "../assets/image/hex-purple-bg.svg";
 import NextImage from "next/image";
 
 export default function CadastroPage() {
-  const [userType, setUserType] = useState("user");
+  const [userType, setUserType] = useState<"user" | "owner">("user");
 
   const handleUserTypeChange = (value: string) => {
-    setUserType(value);
+    setUserType(value === "owner" ? "owner" : "user");
   };
 
   return (
@@ -45,8 +45,8 @@ export default function CadastroPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <RadioGroupItem value="partner" />
-            <Label htmlFor="partner">Parceiro</Label>
+            <RadioGroupItem value="owner" />
+            <Label htmlFor="owner">Parceiro</Label>
           </div>
         </RadioGroup>
 
