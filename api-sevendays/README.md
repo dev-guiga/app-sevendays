@@ -42,9 +42,24 @@ bin/rails db:prepare
 bin/rails s
 ```
 
-## Docker (MySQL)
+## Docker (app completa: FE + API + bancos)
+
+Na raiz do repositorio (`app-sevendays`):
+
 ```bash
-docker-compose up -d
+docker compose up --build
+```
+
+Servicos:
+- Frontend: `http://localhost:3000`
+- API: `http://localhost:3001`
+- MySQL primary: `localhost:3306`
+- MySQL replica: `localhost:3307`
+
+Se alguma porta ja estiver em uso, rode com override:
+
+```bash
+MYSQL_PRIMARY_PORT=3308 MYSQL_REPLICA_PORT=3309 API_PORT=3002 FRONTEND_PORT=3003 docker compose up --build
 ```
 
 ## Testes
