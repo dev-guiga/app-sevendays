@@ -46,7 +46,7 @@ jobs:
           ruby-version: "3.4.7"
           bundler-cache: true
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         env:
           DEPENDENCIES_HASH: ${{ hashFiles('api-sevendays/.ruby-version', 'api-sevendays/**/.rubocop.yml', 'api-sevendays/**/.rubocop_todo.yml', 'api-sevendays/Gemfile.lock') }}
         with:
