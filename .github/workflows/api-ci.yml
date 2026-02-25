@@ -26,6 +26,7 @@ jobs:
         env:
           BUNDLE_GEMFILE: ${{ github.workspace }}/api-sevendays/Gemfile
         with:
+          ruby-version: api-sevendays/.ruby-version
           bundler-cache: true
 
       - run: bin/brakeman --no-pager
@@ -42,6 +43,7 @@ jobs:
         env:
           BUNDLE_GEMFILE: ${{ github.workspace }}/api-sevendays/Gemfile
         with:
+          ruby-version: api-sevendays/.ruby-version
           bundler-cache: true
 
       - uses: actions/cache@v4
