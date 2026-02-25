@@ -2,7 +2,13 @@
 
 import { useMemo, useRef, useState } from "react";
 
-import { cn } from "@/lib/utils";
+import type {
+  SignupFieldErrors,
+  SignupFieldName,
+} from "@/components/signup-steps/signup-step-types";
+import { SignupStepOne } from "@/components/signup-steps/signup-step-one";
+import { SignupStepTwo } from "@/components/signup-steps/signup-step-two";
+import { SignupStepsIndicator } from "@/components/signup-steps/signup-steps-indicator";
 import { Field, FieldDescription, FieldError, FieldGroup } from "@/components/ui/field";
 import {
   buildSignupPayload,
@@ -12,13 +18,9 @@ import {
   type SignupFormValues,
   type SignupStatus,
 } from "@/lib/signup-payload";
-import { SignupStepOne } from "@/components/signup-steps/signup-step-one";
-import { SignupStepTwo } from "@/components/signup-steps/signup-step-two";
-import { SignupStepsIndicator } from "@/components/signup-steps/signup-steps-indicator";
-import type {
-  SignupFieldErrors,
-  SignupFieldName,
-} from "@/components/signup-steps/signup-step-types";
+
+import { cn } from "@/lib/utils";
+import { sevendaysapi } from "@/lib/sevendaysapi";
 
 interface SignupFormProps {
   userType: string;
@@ -66,11 +68,6 @@ const apiErrorFieldMap: Record<string, SignupFieldName> = {
 
 function getSignupStatus(userType: string): SignupStatus {
   return userType === "owner" ? "owner" : "user";
-}
-
-function getBaseApiUrl(): string {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
-  return baseUrl.replace(/\/$/, "");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -363,36 +360,30 @@ export function SignupForm({
     setIsSubmitting(true);
     setFieldErrors({});
 
-    try {
-      const response = await fetch(`${getBaseApiUrl()}/api/users`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+    const result = await sevendaysapi.post("/users", payload);
 
-      const responseData: unknown = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        const apiFieldErrors = mapApiFieldErrors(responseData);
-        setFieldErrors(apiFieldErrors);
-
-        const hasStepOneErrors = stepOneFieldNames.some((field) => apiFieldErrors[field]);
-        setCurrentStep(hasStepOneErrors ? 1 : 2);
-        setFormError(getApiFormError(responseData));
-        return;
-      }
-
+    if (result.error === null) {
       formElement.reset();
       setCurrentStep(1);
       setFieldErrors({});
       setSuccessMessage("Conta criada com sucesso.");
-    } catch {
-      setFormError("Nao foi possivel conectar com a API.");
-    } finally {
       setIsSubmitting(false);
+      return;
     }
+
+    if (result.statusCode !== -1) {
+      const responseData = result.error;
+      const apiFieldErrors = mapApiFieldErrors(responseData);
+      setFieldErrors(apiFieldErrors);
+
+      const hasStepOneErrors = stepOneFieldNames.some((field) => apiFieldErrors[field]);
+      setCurrentStep(hasStepOneErrors ? 1 : 2);
+      setFormError(getApiFormError(responseData));
+    } else {
+      setFormError("Nao foi possivel conectar com a API.");
+    }
+
+    setIsSubmitting(false);
   };
 
   return (
