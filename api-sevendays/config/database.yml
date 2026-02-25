@@ -1,0 +1,51 @@
+default: &default
+  adapter: mysql2
+  encoding: utf8mb4
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  # Configurações para conectar ao MySQL (local ou container)
+  username: <%= ENV.fetch("DATABASE_USERNAME", ENV.fetch("MYSQL_USER", "sevendays_api")) %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD", ENV.fetch("MYSQL_PASSWORD", "mysql")) %>
+  host: <%= ENV.fetch("DATABASE_HOST", ENV.fetch("MYSQL_HOST", "127.0.0.1")) %>
+  port: <%= ENV.fetch("DATABASE_PORT", ENV.fetch("MYSQL_PORT", 3306)) %>
+
+development:
+  primary:
+    <<: *default
+    database: <%= ENV.fetch("DATABASE_NAME", "api_sevendays_development") %>
+  replica:
+    <<: *default
+    replica: true
+    database: <%= ENV.fetch("DATABASE_NAME_REPLICA", "api_sevendays_replica_development") %>
+    username: <%= ENV.fetch("DATABASE_USERNAME_REPLICA", ENV.fetch("MYSQL_USER_REPLICA", "sevendays_api_replica")) %>
+    password: <%= ENV.fetch("DATABASE_PASSWORD_REPLICA", ENV.fetch("MYSQL_PASSWORD_REPLICA", "mysql")) %>
+    host: <%= ENV.fetch("DATABASE_HOST_REPLICA", ENV.fetch("MYSQL_HOST_REPLICA", "127.0.0.1")) %>
+    port: <%= ENV.fetch("DATABASE_PORT_REPLICA", ENV.fetch("MYSQL_PORT_REPLICA", 3307)) %>
+
+test:
+  <<: *default
+  database: <%= ENV.fetch("DATABASE_NAME_TEST", "api_sevendays_test") %>
+  username: <%= ENV.fetch("DATABASE_USERNAME_TEST", "root") %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD_TEST", "mysql") %>
+
+# Store production database in the storage/ directory, which by default
+# is mounted as a persistent Docker volume in config/deploy.yml.
+
+production:
+  primary:
+    <<: *default
+    database: sevendays_api_production
+    username: <%= ENV["DATABASE_USERNAME"] %>
+    password: <%= ENV["DATABASE_PASSWORD"] %>
+    host: <%= ENV["DATABASE_HOST"] %>
+  cache:
+    <<: *default
+    database: sevendays_api_cache
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *default
+    database: sevendays_api_queue
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: sevendays_api_cable
+    migrations_paths: db/cable_migrate
