@@ -223,9 +223,9 @@ function SidebarSectionSkeleton() {
 function OwnerSidebarSection({}) {
   return (
     <div className="flex flex-col gap-4">
-      <h2 className=" text-xl font-bold text-accent-foreground">
-        ultimos agendamentos Separator
-        <Separator className="w-auto h-[1px] bg-primary" />
+      <h2 className="text-xl font-bold text-accent-foreground">
+        ultimos agendamentos
+        <Separator className="h-[1px] bg-primary" />
       </h2>
     </div>
   );
