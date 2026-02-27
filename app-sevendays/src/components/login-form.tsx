@@ -32,6 +32,7 @@ type LoginResponse = {
 
 type CurrentUserResponse = {
   user?: {
+    id?: number;
     username?: string;
     status?: "user" | "owner";
   };
@@ -119,8 +120,7 @@ export function LoginForm({
     }
 
     const currentUser = currentUserResult.data?.user;
-
-    if (!currentUser?.username) {
+    if (!currentUser) {
       toast.error(
         "Login realizado, mas faltam dados do usuario para redirecionar.",
       );
@@ -128,10 +128,26 @@ export function LoginForm({
       return;
     }
 
-    const destination =
-      currentUser.status === "owner"
-        ? `/admin/${currentUser.username}/dashboard`
-        : `/${currentUser.username}/portal`;
+    let destination: string;
+    if (currentUser.status === "owner") {
+      if (!currentUser.id) {
+        toast.error("Login realizado, mas faltou o id do owner.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      destination = `/admin/${currentUser.id}/dashboard`;
+    } else {
+      if (!currentUser.username) {
+        toast.error(
+          "Login realizado, mas faltam dados do usuario para redirecionar.",
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      destination = `/${currentUser.username}/portal`;
+    }
 
     toast.success("Login realizado com sucesso.");
     router.push(destination);
