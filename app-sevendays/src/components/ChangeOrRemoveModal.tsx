@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 //import Calendar20 from "./calendar-20";   <Calendar20 />;
-import { Separator } from "@radix-ui/react-separator";
+import { Separator } from "@/components/ui/separator";
 
 type Date = {
   data: string;
@@ -40,8 +40,8 @@ export function AddOrRemoveModal({
 }: AddOrRemoveModalProps) {
   return (
     <Dialog open={openModal}>
-      <form>
-        <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]">
+        <form>
           <DialogHeader>
             <DialogTitle className="w-max flex flex-col gap-1">
               {title}
@@ -55,12 +55,12 @@ export function AddOrRemoveModal({
             <>
               <div className="grid gap-4">
                 <div>
-                  <h1 className="w-max">
+                  <p className="w-max">
                     Tem certeza que deseja editar o horario:
                     <br />
                     {client?.nome} ás{" "}
                     {`${client?.date.data} - ${client?.date.hora} `}
-                  </h1>
+                  </p>
                 </div>
               </div>
               <DialogFooter>
@@ -76,11 +76,11 @@ export function AddOrRemoveModal({
             <>
               <div className="grid gap-4">
                 <div>
-                  <h1>
+                  <p>
                     Tem certeza que deseja remover o horario: <br /> de{" "}
                     {client?.nome} ás{" "}
                     {`${client?.date.data} - ${client?.date.hora} `}
-                  </h1>
+                  </p>
                 </div>
               </div>
               <DialogFooter>
@@ -93,8 +93,8 @@ export function AddOrRemoveModal({
               </DialogFooter>
             </>
           )}
-        </DialogContent>
-      </form>
+        </form>
+      </DialogContent>
     </Dialog>
   );
 }

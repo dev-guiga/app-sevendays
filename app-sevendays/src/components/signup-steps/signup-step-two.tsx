@@ -6,6 +6,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { CircleNotchIcon } from "@phosphor-icons/react";
 import type {
   SignupFieldErrors,
@@ -18,6 +19,7 @@ interface SignupStepTwoProps {
   onFieldChange: (fieldName: SignupFieldName) => void;
   onBack: () => void;
   isSubmitting: boolean;
+  isOwner: boolean;
 }
 
 export function SignupStepTwo({
@@ -26,6 +28,7 @@ export function SignupStepTwo({
   onFieldChange,
   onBack,
   isSubmitting,
+  isOwner,
 }: SignupStepTwoProps) {
   return (
     <div className={className}>
@@ -109,6 +112,71 @@ export function SignupStepTwo({
             />
           </div>
         </Field>
+
+        {isOwner ? (
+          <>
+            <Field className="flex flex-col gap-0">
+              <FieldLabel htmlFor="professional_description">
+                Descricao profissional (opcional)
+              </FieldLabel>
+              <div className="flex flex-col gap-1">
+                <Textarea
+                  id="professional_description"
+                  name="professional_description"
+                  placeholder="Fale brevemente sobre seu trabalho e especialidade"
+                  aria-invalid={Boolean(fieldErrors.professional_description)}
+                  onChange={() => onFieldChange("professional_description")}
+                  rows={4}
+                />
+                <FieldError
+                  className="text-xs"
+                  errors={[{ message: fieldErrors.professional_description }]}
+                />
+              </div>
+            </Field>
+
+            <Field className="flex flex-col gap-0">
+              <FieldLabel htmlFor="professional_document">
+                Documento profissional (opcional)
+              </FieldLabel>
+              <div className="flex flex-col gap-1">
+                <Input
+                  id="professional_document"
+                  name="professional_document"
+                  type="text"
+                  placeholder="Ex.: COREN 123456, CRM 12345-SP"
+                  aria-invalid={Boolean(fieldErrors.professional_document)}
+                  onChange={() => onFieldChange("professional_document")}
+                />
+                <FieldError
+                  className="text-xs"
+                  errors={[{ message: fieldErrors.professional_document }]}
+                />
+              </div>
+            </Field>
+
+            <Field className="flex flex-col gap-0">
+              <FieldLabel htmlFor="professional_branch">
+                Ramo profissional (opcional)
+              </FieldLabel>
+              <div className="flex flex-col gap-1">
+                <Input
+                  id="professional_branch"
+                  name="professional_branch"
+                  type="text"
+                  placeholder="Ex.: Enfermagem, Medicina, Psicologia"
+                  aria-invalid={Boolean(fieldErrors.professional_branch)}
+                  onChange={() => onFieldChange("professional_branch")}
+                />
+                <FieldError
+                  className="text-xs"
+                  errors={[{ message: fieldErrors.professional_branch }]}
+                />
+              </div>
+            </Field>
+          </>
+        ) : null}
+
         <div className="flex gap-3">
           <Button
             type="button"

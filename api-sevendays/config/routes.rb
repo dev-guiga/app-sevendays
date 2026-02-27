@@ -11,6 +11,8 @@ Rails.application.routes.draw do
     }
 
     namespace :owner do
+      resource :profile, only: [ :update ], controller: "users"
+
       resource :diary, only: [ :create, :show, :update ], controller: "diaries" do
         resources :schedulings, only: [ :index, :create, :update, :destroy ]
         resource :scheduling_rule, only: [ :show, :create, :update, :destroy ], controller: "scheduling_rules"

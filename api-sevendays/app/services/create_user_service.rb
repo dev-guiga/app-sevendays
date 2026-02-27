@@ -27,6 +27,9 @@ class CreateUserService
       :cpf,
       :birth_date,
       :status,
+      :professional_description,
+      :professional_document,
+      :professional_branch,
       address_attributes: [ :address, :city, :state, :neighborhood ]
     )
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_30_022421) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_27_200000) do
   create_table "addresses", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.string "address", null: false
     t.string "city", null: false
@@ -77,6 +77,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_30_022421) do
     t.string "last_name"
     t.datetime "last_sign_in_at"
     t.string "last_sign_in_ip"
+    t.string "professional_branch"
+    t.text "professional_description"
+    t.string "professional_document"
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"

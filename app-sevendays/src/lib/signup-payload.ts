@@ -36,6 +36,23 @@ const addressAttributesSchema = z.object({
   neighborhood: z.string().trim().min(1, requiredMessage("Bairro")),
 });
 
+const optionalTrimmedString = (maxLength: number) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value !== "string") {
+        return undefined;
+      }
+
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    },
+    z.string().max(maxLength).optional()
+  );
+
+const professionalDescriptionSchema = optionalTrimmedString(1000);
+const professionalDocumentSchema = optionalTrimmedString(100);
+const professionalBranchSchema = optionalTrimmedString(100);
+
 const signupStepOneFields = {
   first_name: nameSchema,
   last_name: lastNameSchema,
@@ -53,11 +70,17 @@ const signupStepTwoFields = {
   city: addressAttributesSchema.shape.city,
   state: addressAttributesSchema.shape.state,
   neighborhood: addressAttributesSchema.shape.neighborhood,
+  professional_description: professionalDescriptionSchema,
+  professional_document: professionalDocumentSchema,
+  professional_branch: professionalBranchSchema,
 };
 
 const userPayloadSchema = z
   .object({
     ...signupStepOneFields,
+    professional_description: professionalDescriptionSchema,
+    professional_document: professionalDocumentSchema,
+    professional_branch: professionalBranchSchema,
     address_attributes: addressAttributesSchema,
   })
   .superRefine((value, context) => {
@@ -127,6 +150,15 @@ export function buildSignupPayload(values: SignupFormValues): SignupPayload {
         state: parsedValues.state,
         neighborhood: parsedValues.neighborhood,
       },
+      ...(parsedValues.status === "owner" && parsedValues.professional_description
+        ? { professional_description: parsedValues.professional_description }
+        : {}),
+      ...(parsedValues.status === "owner" && parsedValues.professional_document
+        ? { professional_document: parsedValues.professional_document }
+        : {}),
+      ...(parsedValues.status === "owner" && parsedValues.professional_branch
+        ? { professional_branch: parsedValues.professional_branch }
+        : {}),
     },
   };
 

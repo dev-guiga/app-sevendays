@@ -20,11 +20,11 @@ export function ConfirmationDateModal({
 }) {
   return (
     <Dialog>
-      <form>
-        <DialogTrigger asChild>
-          <Button variant="outline">Confirmar Agendamento</Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
+      <DialogTrigger asChild>
+        <Button variant="outline">Confirmar Agendamento</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <form>
           <DialogHeader className="w-full flex flex-row justify-between flex-nowrap">
             <DialogTitle>Deseja confirmar o agendamento?</DialogTitle>
             <DialogClose
@@ -37,15 +37,13 @@ export function ConfirmationDateModal({
           </DialogHeader>
 
           <DialogDescription className="py-15">
-            <p>
-              Deseja confirmar o agendamento para o dia{" "}
-              {date?.toLocaleDateString("pt-BR", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })}{" "}
-              ás {selectedTime}?
-            </p>
+            Deseja confirmar o agendamento para o dia{" "}
+            {date?.toLocaleDateString("pt-BR", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}{" "}
+            ás {selectedTime}?
           </DialogDescription>
           <DialogFooter>
             <DialogClose asChild>
@@ -53,8 +51,8 @@ export function ConfirmationDateModal({
             </DialogClose>
             <Button type="submit">Confirmar</Button>
           </DialogFooter>
-        </DialogContent>
-      </form>
+        </form>
+      </DialogContent>
     </Dialog>
   );
 }

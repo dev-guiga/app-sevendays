@@ -13,6 +13,9 @@ json.user do
   json.updated_at @user.updated_at
   json.cpf @user.cpf
   json.birth_date @user.birth_date
+  json.professional_description @user.professional_description
+  json.professional_document @user.professional_document
+  json.professional_branch @user.professional_branch
   if @user.address.present?
     json.address do
       json.id @user.address.id

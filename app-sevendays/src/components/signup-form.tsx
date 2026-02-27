@@ -46,6 +46,9 @@ const stepTwoFieldNames: SignupFieldName[] = [
   "neighborhood",
   "city",
   "state",
+  "professional_description",
+  "professional_document",
+  "professional_branch",
 ];
 
 const apiErrorFieldMap: Record<string, SignupFieldName> = {
@@ -65,6 +68,9 @@ const apiErrorFieldMap: Record<string, SignupFieldName> = {
   "address.state": "state",
   neighborhood: "neighborhood",
   "address.neighborhood": "neighborhood",
+  professional_description: "professional_description",
+  professional_document: "professional_document",
+  professional_branch: "professional_branch",
 };
 
 function getSignupStatus(userType: string): SignupStatus {
@@ -176,6 +182,9 @@ function readFormValues(formData: FormData, status: SignupStatus): SignupFormVal
     city: String(formData.get("city") ?? ""),
     state: String(formData.get("state") ?? ""),
     neighborhood: String(formData.get("neighborhood") ?? ""),
+    professional_description: String(formData.get("professional_description") ?? ""),
+    professional_document: String(formData.get("professional_document") ?? ""),
+    professional_branch: String(formData.get("professional_branch") ?? ""),
   };
 }
 
@@ -199,6 +208,9 @@ function pickStepTwoValues(values: SignupFormValues) {
     city: values.city,
     state: values.state,
     neighborhood: values.neighborhood,
+    professional_description: values.professional_description,
+    professional_document: values.professional_document,
+    professional_branch: values.professional_branch,
   };
 }
 
@@ -405,6 +417,7 @@ export function SignupForm({
           onFieldChange={handleFieldChange}
           onBack={handleBackToPreviousStep}
           isSubmitting={isSubmitting}
+          isOwner={status === "owner"}
         />
       </FieldGroup>
     </form>

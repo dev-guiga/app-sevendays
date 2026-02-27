@@ -5,7 +5,6 @@ import { CheckCircle } from "@phosphor-icons/react";
 import { Separator } from "@radix-ui/react-dropdown-menu";
 
 import AvatarProfile from "@/components/Avatar";
-import * as Card from "@/components/ui/card";
 import NextImage from "next/image";
 
 import Logo from "@/app/assets/image/seven-days.svg";

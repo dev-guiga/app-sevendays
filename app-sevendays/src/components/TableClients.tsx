@@ -17,11 +17,13 @@ type Date = {
   hora: string;
 };
 
+type ClientStatus = "finalizado" | "nao compareceu" | "desmarcado" | "agendado";
+
 interface client {
   nome: string;
   email: string;
   date: Date;
-  status: string;
+  status: ClientStatus;
 }
 
 const clientes = [
@@ -87,7 +89,7 @@ const clientes = [
   },
 ] as client[];
 
-const statusColors = {
+const statusColors: Record<ClientStatus, string> = {
   finalizado: "#16A34A", // verde
   "nao compareceu": "#DC2626", // vermelho
   desmarcado: "#EA580C", // laranja
@@ -136,67 +138,72 @@ export function TableClients() {
   };
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Nome</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Data</TableHead>
-          <TableHead>Hora</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Remover</TableHead>
-          <TableHead>Editar</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {clientes.map((cliente, index) => (
-          <TableRow key={index}>
-            <TableCell className="font-medium">{cliente.nome}</TableCell>
-            <TableCell>{cliente.email}</TableCell>
-            <TableCell>{cliente.date.data}</TableCell>
-            <TableCell>{cliente.date.hora}</TableCell>
-            <TableCell
-              className="capitalize"
-              style={{ color: statusColors[cliente.status] }}
-            >
-              {cliente.status}
-            </TableCell>
-            <TableCell className="capitalize">
-              <button
-                className="cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-                disabled={
-                  cliente?.status === "finalizado" ||
-                  cliente?.status === "desmarcado" ||
-                  cliente?.status === "nao compareceu"
-                }
-                onClick={() => RemoveDateClient(cliente)}
-              >
-                <Trash size={18} fill="#dc2626" />
-              </button>
-            </TableCell>
-            <TableCell className="capitalize">
-              <button
-                className="cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-                disabled={
-                  cliente?.status === "finalizado" ||
-                  cliente?.status === "desmarcado" ||
-                  cliente?.status === "nao compareceu"
-                }
-                onClick={() => editDateClient(cliente)}
-              >
-                <PencilSimple size={18} fill="#e5e5e5" />
-              </button>
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Data</TableHead>
+            <TableHead>Hora</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Remover</TableHead>
+            <TableHead>Editar</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-      <AddOrRemoveModal
-        openModal={openModal.checkOpen}
-        title={openModal.title}
-        type={openModal.type}
-        client={client!}
-        onCloseModal={onCloseModal}
-      />
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {clientes.map((cliente, index) => (
+            <TableRow key={index}>
+              <TableCell className="font-medium">{cliente.nome}</TableCell>
+              <TableCell>{cliente.email}</TableCell>
+              <TableCell>{cliente.date.data}</TableCell>
+              <TableCell>{cliente.date.hora}</TableCell>
+              <TableCell
+                className="capitalize"
+                style={{ color: statusColors[cliente.status] }}
+              >
+                {cliente.status}
+              </TableCell>
+              <TableCell className="capitalize">
+                <button
+                  className="cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={
+                    cliente?.status === "finalizado" ||
+                    cliente?.status === "desmarcado" ||
+                    cliente?.status === "nao compareceu"
+                  }
+                  onClick={() => RemoveDateClient(cliente)}
+                >
+                  <Trash size={18} fill="#dc2626" />
+                </button>
+              </TableCell>
+              <TableCell className="capitalize">
+                <button
+                  className="cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={
+                    cliente?.status === "finalizado" ||
+                    cliente?.status === "desmarcado" ||
+                    cliente?.status === "nao compareceu"
+                  }
+                  onClick={() => editDateClient(cliente)}
+                >
+                  <PencilSimple size={18} fill="#e5e5e5" />
+                </button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {client ? (
+        <AddOrRemoveModal
+          openModal={openModal.checkOpen}
+          title={openModal.title}
+          type={openModal.type}
+          client={client}
+          onCloseModal={onCloseModal}
+        />
+      ) : null}
+    </>
   );
 }

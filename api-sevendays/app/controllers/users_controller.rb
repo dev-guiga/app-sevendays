@@ -30,6 +30,9 @@ class UsersController < ApplicationController
       :status,
       :cpf,
       :birth_date,
+      :professional_description,
+      :professional_document,
+      :professional_branch,
       address_attributes: [ :address, :city, :state, :neighborhood ]
     )
   end

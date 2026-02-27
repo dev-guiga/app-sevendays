@@ -5,7 +5,6 @@ import { Button } from "./ui/button";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -119,7 +118,7 @@ export function SideBar() {
               Sev7en Days
             </SheetTitle>
           </SheetHeader>
-          <SheetDescription className="flex flex-col gap-5 px-4">
+          <div className="flex flex-col gap-5 px-4">
             <div className="flex gap-6">
               <AvatarProfile
                 src={partner.image.src}
@@ -188,7 +187,7 @@ export function SideBar() {
                 ))}
               </div>
             </div>
-          </SheetDescription>
+          </div>
         </SheetContent>
       </Sheet>
 
