@@ -1,4 +1,6 @@
 class Owner::SchedulingsController < ApplicationController
+  PER_PAGE = 20
+
   before_action :authenticate_user!
   before_action :set_diary
 
@@ -6,7 +8,32 @@ class Owner::SchedulingsController < ApplicationController
     return if performed?
 
     authorize @diary, :schedule?
-    @schedulings = @diary.schedulings.includes(:user).order(date: :asc, time: :asc)
+    page = pagination_page
+    per_page = PER_PAGE
+
+    schedulings_scope = @diary.schedulings
+      .includes(:user)
+      .marked
+      .order(date: :desc, time: :desc, created_at: :desc)
+
+    total_count = schedulings_scope.count
+    total_pages = (total_count.to_f / per_page).ceil
+    total_pages = 1 if total_pages.zero?
+    page = [ page, total_pages ].min
+
+    @schedulings = schedulings_scope
+      .offset((page - 1) * per_page)
+      .limit(per_page)
+
+    @pagination = {
+      page: page,
+      per_page: per_page,
+      total_count: total_count,
+      total_pages: total_pages,
+      has_prev: page > 1,
+      has_next: page < total_pages
+    }
+
     render :index, status: :ok
   end
 
@@ -85,6 +112,11 @@ class Owner::SchedulingsController < ApplicationController
   end
 
   private
+  def pagination_page
+    page = params[:page].to_i
+    page.positive? ? page : 1
+  end
+
   def scheduling_params
     params.require(:scheduling).permit(:user_email, :date, :time)
   end

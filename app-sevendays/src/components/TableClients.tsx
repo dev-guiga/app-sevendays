@@ -1,5 +1,6 @@
 "use client";
-import { PencilSimple, Trash } from "@phosphor-icons/react/dist/ssr";
+
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Table,
@@ -9,136 +10,221 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AddOrRemoveModal } from "./ChangeOrRemoveModal";
-import { useState } from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Skeleton } from "@/components/ui/skeleton";
+import { sevendaysapi } from "@/lib/sevendaysapi";
+import { toast } from "sonner";
 
-type Date = {
-  data: string;
-  hora: string;
+type OwnerSchedulingStatus = "available" | "marked" | "cancelled";
+
+type OwnerScheduling = {
+  id: number;
+  user_name?: string;
+  user_email?: string;
+  date?: string;
+  time?: string;
+  status?: OwnerSchedulingStatus;
+  description?: string;
 };
 
-type ClientStatus = "finalizado" | "nao compareceu" | "desmarcado" | "agendado";
+type PaginatedOwnerSchedulingsResponse = {
+  success?: boolean;
+  schedulings?: OwnerScheduling[];
+  pagination?: {
+    page?: number;
+    per_page?: number;
+    total_count?: number;
+    total_pages?: number;
+    has_prev?: boolean;
+    has_next?: boolean;
+  };
+};
 
-interface client {
-  nome: string;
-  email: string;
-  date: Date;
-  status: ClientStatus;
+const PER_PAGE = 20;
+const SKELETON_ROWS = 20;
+
+function formatDate(value?: string) {
+  if (!value) {
+    return "-";
+  }
+
+  const isoDateMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoDateMatch) {
+    const [, year, month, day] = isoDateMatch;
+    return `${day}/${month}/${year}`;
+  }
+
+  const timestampDateMatch = value.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (timestampDateMatch) {
+    const [, year, month, day] = timestampDateMatch;
+    return `${day}/${month}/${year}`;
+  }
+
+  return value;
 }
 
-const clientes = [
-  {
-    nome: "Ana Silva",
-    email: "ana.silva@email.com",
-    date: { data: "2025-11-12", hora: "09:00" },
-    status: "agendado",
-  },
-  {
-    nome: "Bruno Costa",
-    email: "bruno.costa@email.com",
-    date: { data: "2025-11-12", hora: "10:30" },
-    status: "finalizado",
-  },
-  {
-    nome: "Carla Oliveira",
-    email: "carla.oliveira@email.com",
-    date: { data: "2025-11-13", hora: "14:00" },
-    status: "desmarcado",
-  },
-  {
-    nome: "Diego Rocha",
-    email: "diego.rocha@email.com",
-    date: { data: "2025-11-13", hora: "15:30" },
-    status: "nao compareceu",
-  },
-  {
-    nome: "Eduarda Lima",
-    email: "eduarda.lima@email.com",
-    date: { data: "2025-11-14", hora: "11:00" },
-    status: "agendado",
-  },
-  {
-    nome: "Felipe Martins",
-    email: "felipe.martins@email.com",
-    date: { data: "2025-11-14", hora: "13:00" },
-    status: "finalizado",
-  },
-  {
-    nome: "Gabriela Nunes",
-    email: "gabriela.nunes@email.com",
-    date: { data: "2025-11-15", hora: "09:30" },
-    status: "desmarcado",
-  },
-  {
-    nome: "Henrique Souza",
-    email: "henrique.souza@email.com",
-    date: { data: "2025-11-15", hora: "16:00" },
-    status: "nao compareceu",
-  },
-  {
-    nome: "Isabela Mendes",
-    email: "isabela.mendes@email.com",
-    date: { data: "2025-11-16", hora: "10:00" },
-    status: "agendado",
-  },
-  {
-    nome: "João Pereira",
-    email: "joao.pereira@email.com",
-    date: { data: "2025-11-16", hora: "17:30" },
-    status: "finalizado",
-  },
-] as client[];
+function formatTime(value?: string) {
+  if (!value) {
+    return "-";
+  }
 
-const statusColors: Record<ClientStatus, string> = {
-  finalizado: "#16A34A", // verde
-  "nao compareceu": "#DC2626", // vermelho
-  desmarcado: "#EA580C", // laranja
-  agendado: "#7C3AED", // roxo
-};
+  const match = value.match(/(\d{2}):(\d{2})/);
+  if (!match) {
+    return value;
+  }
 
-type OpenModal = {
-  checkOpen: boolean;
-  title: string;
-  type: "editar" | "remover";
-};
+  return `${match[1]}:${match[2]}`;
+}
+
+function getStatusLabel(status?: OwnerSchedulingStatus) {
+  if (status === "marked") {
+    return "agendado";
+  }
+
+  if (status === "cancelled") {
+    return "cancelado";
+  }
+
+  if (status === "available") {
+    return "disponivel";
+  }
+
+  return "desconhecido";
+}
+
+function getStatusClassName(status?: OwnerSchedulingStatus) {
+  if (status === "marked") {
+    return "text-green-500";
+  }
+
+  if (status === "cancelled") {
+    return "text-red-500";
+  }
+
+  if (status === "available") {
+    return "text-amber-500";
+  }
+
+  return "text-muted-foreground";
+}
+
+function buildPaginationItems(currentPage: number, totalPages: number) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const items: Array<number | "left-ellipsis" | "right-ellipsis"> = [1];
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (start > 2) {
+    items.push("left-ellipsis");
+  }
+
+  for (let page = start; page <= end; page += 1) {
+    items.push(page);
+  }
+
+  if (end < totalPages - 1) {
+    items.push("right-ellipsis");
+  }
+
+  items.push(totalPages);
+  return items;
+}
 
 export function TableClients() {
-  const [client, setClient] = useState<client | null>(null);
-  const [openModal, setOpenModal] = useState<OpenModal>({
-    checkOpen: false,
-    title: "",
-    type: "editar",
-  });
+  const [schedulings, setSchedulings] = useState<OwnerScheduling[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasPrev, setHasPrev] = useState(false);
+  const [hasNext, setHasNext] = useState(false);
 
-  const onCloseModal = () => {
-    setOpenModal((prev) => ({
-      ...prev,
-      checkOpen: false,
-      type: "editar",
-    }));
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadOwnerSchedulings() {
+      setIsLoading(true);
+
+      const result = await sevendaysapi.get<PaginatedOwnerSchedulingsResponse>(
+        "/owner/diary/schedulings",
+        {
+          withCredentials: true,
+          params: {
+            page: currentPage,
+            per_page: PER_PAGE,
+          },
+        },
+      );
+
+      if (ignore) {
+        return;
+      }
+
+      if (
+        result.error ||
+        result.statusCode !== 200 ||
+        !result.data?.success ||
+        !Array.isArray(result.data.schedulings)
+      ) {
+        toast.error("Não foi possível carregar os horários agendados.");
+        setSchedulings([]);
+        setTotalPages(1);
+        setTotalCount(0);
+        setHasPrev(false);
+        setHasNext(false);
+        setIsLoading(false);
+        return;
+      }
+
+      const pagination = result.data.pagination;
+      const serverPage = Math.max(1, Number(pagination?.page) || currentPage);
+
+      setSchedulings(result.data.schedulings);
+      if (serverPage !== currentPage) {
+        setCurrentPage(serverPage);
+      }
+      setTotalPages(Math.max(1, Number(pagination?.total_pages) || 1));
+      setTotalCount(Math.max(0, Number(pagination?.total_count) || 0));
+      setHasPrev(Boolean(pagination?.has_prev));
+      setHasNext(Boolean(pagination?.has_next));
+      setIsLoading(false);
+    }
+
+    void loadOwnerSchedulings();
+
+    return () => {
+      ignore = true;
+    };
+  }, [currentPage]);
+
+  const paginationItems = useMemo(
+    () => buildPaginationItems(currentPage, totalPages),
+    [currentPage, totalPages],
+  );
+
+  const handleGoToPage = (page: number) => {
+    if (page < 1 || page > totalPages || page === currentPage) {
+      return;
+    }
+
+    setCurrentPage(page);
   };
 
-  const editDateClient = (client: client) => {
-    setOpenModal((prev) => ({
-      ...prev,
-      checkOpen: true,
-      title: "Editar Hórario",
-      type: "remover",
-    }));
-    setClient(client);
-  };
-
-  const RemoveDateClient = (client: client) => {
-    setOpenModal((prev) => ({
-      ...prev,
-      checkOpen: true,
-      title: "Remover Hórario",
-    }));
-    setClient(client);
-  };
+  const isEmptyState = !isLoading && schedulings.length === 0;
 
   return (
-    <>
+    <div className="w-full flex flex-col gap-4">
       <Table>
         <TableHeader>
           <TableRow>
@@ -147,63 +233,120 @@ export function TableClients() {
             <TableHead>Data</TableHead>
             <TableHead>Hora</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Remover</TableHead>
-            <TableHead>Editar</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {clientes.map((cliente, index) => (
-            <TableRow key={index}>
-              <TableCell className="font-medium">{cliente.nome}</TableCell>
-              <TableCell>{cliente.email}</TableCell>
-              <TableCell>{cliente.date.data}</TableCell>
-              <TableCell>{cliente.date.hora}</TableCell>
-              <TableCell
-                className="capitalize"
-                style={{ color: statusColors[cliente.status] }}
-              >
-                {cliente.status}
-              </TableCell>
-              <TableCell className="capitalize">
-                <button
-                  className="cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-                  disabled={
-                    cliente?.status === "finalizado" ||
-                    cliente?.status === "desmarcado" ||
-                    cliente?.status === "nao compareceu"
-                  }
-                  onClick={() => RemoveDateClient(cliente)}
-                >
-                  <Trash size={18} fill="#dc2626" />
-                </button>
-              </TableCell>
-              <TableCell className="capitalize">
-                <button
-                  className="cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-                  disabled={
-                    cliente?.status === "finalizado" ||
-                    cliente?.status === "desmarcado" ||
-                    cliente?.status === "nao compareceu"
-                  }
-                  onClick={() => editDateClient(cliente)}
-                >
-                  <PencilSimple size={18} fill="#e5e5e5" />
-                </button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {isLoading
+            ? Array.from({ length: SKELETON_ROWS }).map((_, index) => (
+                <TableRow key={`skeleton-${index}`}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-44" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-16" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                </TableRow>
+              ))
+            : isEmptyState
+              ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="p-0">
+                      <div className="h-[700px] w-full flex items-center justify-center">
+                        <p className="text-muted-foreground">Sem horários agendados.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              : schedulings.map((scheduling) => (
+                  <TableRow key={scheduling.id}>
+                    <TableCell className="font-medium">
+                      {scheduling.user_name || "Paciente"}
+                    </TableCell>
+                    <TableCell>{scheduling.user_email || "-"}</TableCell>
+                    <TableCell>{formatDate(scheduling.date)}</TableCell>
+                    <TableCell>{formatTime(scheduling.time)}</TableCell>
+                    <TableCell
+                      className={`capitalize ${getStatusClassName(scheduling.status)}`}
+                    >
+                      {getStatusLabel(scheduling.status)}
+                    </TableCell>
+                  </TableRow>
+                ))}
         </TableBody>
       </Table>
 
-      {client ? (
-        <AddOrRemoveModal
-          openModal={openModal.checkOpen}
-          title={openModal.title}
-          type={openModal.type}
-          client={client}
-          onCloseModal={onCloseModal}
-        />
+      {!isLoading && !isEmptyState ? (
+        <div className="w-full flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground text-center">
+            Página {currentPage} de {totalPages} • {totalCount} agendamento(s)
+          </p>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    if (!hasPrev) {
+                      return;
+                    }
+                    handleGoToPage(currentPage - 1);
+                  }}
+                  className={!hasPrev ? "pointer-events-none opacity-50" : undefined}
+                />
+              </PaginationItem>
+
+              {paginationItems.map((item, index) => {
+                if (item === "left-ellipsis" || item === "right-ellipsis") {
+                  return (
+                    <PaginationItem key={`${item}-${index}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  );
+                }
+
+                return (
+                  <PaginationItem key={item}>
+                    <PaginationLink
+                      href="#"
+                      isActive={item === currentPage}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        handleGoToPage(item);
+                      }}
+                    >
+                      {item}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              })}
+
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    if (!hasNext) {
+                      return;
+                    }
+                    handleGoToPage(currentPage + 1);
+                  }}
+                  className={!hasNext ? "pointer-events-none opacity-50" : undefined}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       ) : null}
-    </>
+    </div>
   );
 }
