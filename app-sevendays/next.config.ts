@@ -9,6 +9,9 @@ function buildApiDestination() {
 }
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: process.cwd(),
+  },
   async rewrites() {
     return [
       {

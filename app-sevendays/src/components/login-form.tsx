@@ -1,24 +1,151 @@
+"use client";
+
+import { useState } from "react";
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
   FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { sevendaysapi } from "@/lib/sevendaysapi";
 
-import GoogleIcon from "@/app/assets/image/google-icon.svg";
-
-import NextImage from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { UserIcon } from "@phosphor-icons/react/dist/ssr";
+
+type LoginPayload = {
+  user: {
+    email: string;
+    password: string;
+  };
+};
+
+type LoginResponse = {
+  message: string;
+};
+
+type CurrentUserResponse = {
+  user?: {
+    username?: string;
+    status?: "user" | "owner";
+  };
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getLoginErrorMessage(error: unknown): string {
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error;
+  }
+
+  if (isRecord(error) && isRecord(error.error)) {
+    const message = error.error.message;
+    if (typeof message === "string" && message.trim().length > 0) {
+      return message;
+    }
+  }
+
+  if (isRecord(error)) {
+    const message = error.message;
+    if (typeof message === "string" && message.trim().length > 0) {
+      return message;
+    }
+  }
+
+  return "Nao foi possivel realizar o login.";
+}
+
 export function LoginForm({
   className,
+  onSubmit,
   ...props
 }: React.ComponentProps<"form">) {
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSubmit?.(event);
+
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+
+    if (!email || !password) {
+      setFormError("Email e senha sao obrigatorios.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormError(null);
+
+    const payload: LoginPayload = {
+      user: {
+        email,
+        password,
+      },
+    };
+
+    const loginResult = await sevendaysapi.post<LoginResponse, LoginPayload>(
+      "/users/sign_in",
+      payload,
+      { withCredentials: true },
+    );
+
+    if (loginResult.error || loginResult.statusCode !== 200) {
+      setFormError(getLoginErrorMessage(loginResult.error));
+      setIsSubmitting(false);
+      return;
+    }
+
+    const currentUserResult = await sevendaysapi.get<CurrentUserResponse>(
+      "/user",
+      {
+        withCredentials: true,
+      },
+    );
+
+    if (currentUserResult.error || currentUserResult.statusCode !== 200) {
+      setFormError("Login realizado, mas nao foi possivel carregar o usuario.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const currentUser = currentUserResult.data?.user;
+
+    if (!currentUser?.username) {
+      setFormError(
+        "Login realizado, mas faltam dados do usuario para redirecionar.",
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
+    const destination =
+      currentUser.status === "owner"
+        ? `/admin/${currentUser.username}/dashboard`
+        : `/${currentUser.username}/portal`;
+
+    router.push(destination);
+    router.refresh();
+    setIsSubmitting(false);
+  };
+
   return (
-    <form className={cn("flex flex-col gap-6", className)} {...props}>
+    <form
+      className={cn("flex flex-col gap-6", className)}
+      onSubmit={handleSubmit}
+      {...props}
+    >
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">
@@ -33,38 +160,62 @@ export function LoginForm({
           <FieldLabel htmlFor="email" className="font-bold text-base">
             Username
           </FieldLabel>
-          <Input id="email" type="email" placeholder="m@example.com" required />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="m@example.com"
+            required
+            disabled={isSubmitting}
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="password" className="font-bold text-base">
+            Senha
+          </FieldLabel>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="Digite sua senha"
+            required
+            disabled={isSubmitting}
+          />
         </Field>
 
         <FieldSeparator>Agora continue com</FieldSeparator>
 
         <Field>
-          <Button variant="outline" type="button">
-            <NextImage
-              src={GoogleIcon}
-              alt="Google Icon"
-              width={16}
-              height={16}
-            />
-            Login com Google
+          <Button type="button" disabled={isSubmitting}>
+            <UserIcon size={32} />
+            sign-in
           </Button>
 
           <FieldDescription className="text-center">
             Não tem uma conta?{" "}
-            <a href="/cadastro" className="no-underline">
+            <Link href="/cadastro" className="no-underline">
               <span className="underline underline-offset-4 hover:text-foreground">
                 Cadastre-se
               </span>
-            </a>
+            </Link>
           </FieldDescription>
         </Field>
 
         <FieldSeparator>Caso seja Parceiro</FieldSeparator>
 
         <Field>
-          <Link href="/login" className="text-center font-bold text-lg">
-            <Button type="submit" className="w-full">Login</Button>
-          </Link>
+          <Button
+            variant="outline"
+            type="submit"
+            className="w-full"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Entrando..." : "sign-in como profissional"}
+          </Button>
+          {formError ? <FieldError>{formError}</FieldError> : null}
         </Field>
       </FieldGroup>
     </form>
