@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import type {
   SignupFieldErrors,
@@ -21,6 +21,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { sevendaysapi } from "@/lib/sevendaysapi";
+import { toast } from "sonner";
 
 interface SignupFormProps {
   userType: string;
@@ -28,10 +29,6 @@ interface SignupFormProps {
 
 type SignupStep = 1 | 2;
 type ValidationIssue = { path: readonly PropertyKey[]; message: string };
-type SignupToast = {
-  type: "success" | "error";
-  message: string;
-};
 
 const stepOneFieldNames: SignupFieldName[] = [
   "first_name",
@@ -213,23 +210,10 @@ export function SignupForm({
 }: React.ComponentProps<"form"> & SignupFormProps) {
   const [currentStep, setCurrentStep] = useState<SignupStep>(1);
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
-  const [toast, setToast] = useState<SignupToast | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formRef = useRef<HTMLFormElement>(null);
   const status = useMemo(() => getSignupStatus(userType), [userType]);
-
-  useEffect(() => {
-    if (!toast) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setToast(null);
-    }, 4000);
-
-    return () => window.clearTimeout(timeout);
-  }, [toast]);
 
   const clearStepErrors = (stepFields: readonly SignupFieldName[]) => {
     setFieldErrors((previous) => {
@@ -359,7 +343,6 @@ export function SignupForm({
 
     const payload = buildSignupPayload(parsedValues.data);
 
-    setToast(null);
     setIsSubmitting(true);
     setFieldErrors({});
 
@@ -369,7 +352,7 @@ export function SignupForm({
       formElement.reset();
       setCurrentStep(1);
       setFieldErrors({});
-      setToast({ type: "success", message: "Conta criada com sucesso." });
+      toast.success("Conta criada com sucesso.");
       setIsSubmitting(false);
       return;
     }
@@ -381,9 +364,9 @@ export function SignupForm({
 
       const hasStepOneErrors = stepOneFieldNames.some((field) => apiFieldErrors[field]);
       setCurrentStep(hasStepOneErrors ? 1 : 2);
-      setToast({ type: "error", message: getApiFormError(responseData) });
+      toast.error(getApiFormError(responseData));
     } else {
-      setToast({ type: "error", message: "Nao foi possivel conectar com a API." });
+      toast.error("Nao foi possivel conectar com a API.");
     }
 
     setIsSubmitting(false);
@@ -397,21 +380,6 @@ export function SignupForm({
       noValidate
       {...props}
     >
-      {toast ? (
-        <div className="fixed top-6 right-6 z-50">
-          <div
-            role="status"
-            aria-live="polite"
-            className={cn(
-              "rounded-md px-4 py-3 text-sm text-white shadow-lg",
-              toast.type === "success" ? "bg-green-600" : "bg-red-600"
-            )}
-          >
-            {toast.message}
-          </div>
-        </div>
-      ) : null}
-
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Crie sua conta</h1>

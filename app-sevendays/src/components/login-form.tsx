@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   Field,
   FieldDescription,
-  FieldError,
   FieldGroup,
   FieldLabel,
   FieldSeparator,
@@ -18,6 +17,7 @@ import { sevendaysapi } from "@/lib/sevendaysapi";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UserIcon } from "@phosphor-icons/react/dist/ssr";
+import { toast } from "sonner";
 
 type LoginPayload = {
   user: {
@@ -70,7 +70,6 @@ export function LoginForm({
 }: React.ComponentProps<"form">) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -81,12 +80,11 @@ export function LoginForm({
     const password = String(formData.get("password") ?? "");
 
     if (!email || !password) {
-      setFormError("Email e senha sao obrigatorios.");
+      toast.error("Email e senha sao obrigatorios.");
       return;
     }
 
     setIsSubmitting(true);
-    setFormError(null);
 
     const payload: LoginPayload = {
       user: {
@@ -102,7 +100,7 @@ export function LoginForm({
     );
 
     if (loginResult.error || loginResult.statusCode !== 200) {
-      setFormError(getLoginErrorMessage(loginResult.error));
+      toast.error(getLoginErrorMessage(loginResult.error));
       setIsSubmitting(false);
       return;
     }
@@ -115,7 +113,7 @@ export function LoginForm({
     );
 
     if (currentUserResult.error || currentUserResult.statusCode !== 200) {
-      setFormError("Login realizado, mas nao foi possivel carregar o usuario.");
+      toast.error("Login realizado, mas nao foi possivel carregar o usuario.");
       setIsSubmitting(false);
       return;
     }
@@ -123,7 +121,7 @@ export function LoginForm({
     const currentUser = currentUserResult.data?.user;
 
     if (!currentUser?.username) {
-      setFormError(
+      toast.error(
         "Login realizado, mas faltam dados do usuario para redirecionar.",
       );
       setIsSubmitting(false);
@@ -135,6 +133,7 @@ export function LoginForm({
         ? `/admin/${currentUser.username}/dashboard`
         : `/${currentUser.username}/portal`;
 
+    toast.success("Login realizado com sucesso.");
     router.push(destination);
     router.refresh();
     setIsSubmitting(false);
@@ -215,7 +214,6 @@ export function LoginForm({
           >
             {isSubmitting ? "Entrando..." : "sign-in como profissional"}
           </Button>
-          {formError ? <FieldError>{formError}</FieldError> : null}
         </Field>
       </FieldGroup>
     </form>

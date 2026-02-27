@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
 
@@ -36,6 +37,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Header />
           {children}
+          <Toaster />
           <Footer />
         </ThemeProvider>
       </body>
