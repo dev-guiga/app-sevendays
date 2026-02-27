@@ -23,6 +23,10 @@ RSpec.describe Owner::SchedulingsController, type: :controller do
   }
 
   describe "routing" do
+    it "routes GET /api/owner/sidebar/schedulings to owner/schedulings#sidebar" do
+      expect(get: "/api/owner/sidebar/schedulings").to route_to("owner/schedulings#sidebar")
+    end
+
     it "routes POST /api/owner/diary/schedulings to owner/schedulings#create" do
       expect(post: "/api/owner/diary/schedulings").to route_to("owner/schedulings#create")
     end
@@ -253,6 +257,118 @@ RSpec.describe Owner::SchedulingsController, type: :controller do
     context "when unauthenticated" do
       it "returns unauthorized" do
         get :index, format: :json
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
+  describe "#sidebar" do
+    around do |example|
+      travel_to(Time.zone.local(2026, 1, 1, 10, 0, 0)) { example.run }
+    end
+
+    let!(:today_marked_schedulings) do
+      (8..19).map do |hour|
+        Scheduling.create!(
+          scheduling_attributes(
+            user: user,
+            diary: diary,
+            rule: scheduling_rule,
+            overrides: {
+              date: Date.current,
+              time: format("%02d:00", hour),
+              status: "marked",
+              description: "Descricao owner sidebar #{hour}"
+            }
+          )
+        )
+      end
+    end
+    let!(:today_cancelled_scheduling) do
+      Scheduling.create!(
+        scheduling_attributes(
+          user: user,
+          diary: diary,
+          rule: scheduling_rule,
+          overrides: {
+            date: Date.current,
+            time: "07:00",
+            status: "cancelled",
+            description: "Descricao cancelada owner sidebar"
+          }
+        )
+      )
+    end
+    let!(:other_day_scheduling) do
+      Scheduling.create!(
+        scheduling_attributes(
+          user: user,
+          diary: diary,
+          rule: scheduling_rule,
+          overrides: {
+            date: Date.current + 1.day,
+            time: "18:00",
+            status: "marked",
+            description: "Descricao owner em outro dia"
+          }
+        )
+      )
+    end
+
+    context "when authorized" do
+      before do
+        sign_in(owner)
+        scheduling_rule
+      end
+
+      it "returns at most 10 marked schedulings for today ordered by time desc" do
+        get :sidebar, format: :json
+
+        expect(response).to have_http_status(:ok)
+        body = response.parsed_body
+        expect(body["success"]).to eq(true)
+        expect(body["schedulings"].size).to eq(10)
+
+        expected_ids = today_marked_schedulings.sort_by(&:time).reverse.first(10).map(&:id)
+        returned_ids = body["schedulings"].map { |item| item["id"] }
+        expect(returned_ids).to eq(expected_ids)
+
+        first_item = body["schedulings"].first
+        expect(first_item["diary_title"]).to eq(diary.title)
+        expect(first_item["professional_name"]).to eq(user.full_name)
+        expect(first_item["status"]).to eq("marked")
+      end
+    end
+
+    context "when current user is not owner" do
+      let(:non_owner) { create_user!(status: "user") }
+      let!(:non_owner_diary) { create_diary!(user: non_owner) }
+
+      before { sign_in(non_owner) }
+
+      it "returns forbidden" do
+        get :sidebar, format: :json
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "when diary does not exist" do
+      let(:owner_without_diary) { create_user!(status: "owner") }
+
+      before { sign_in(owner_without_diary) }
+
+      it "returns not found" do
+        get :sidebar, format: :json
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context "when unauthenticated" do
+      it "returns unauthorized" do
+        get :sidebar, format: :json
 
         expect(response).to have_http_status(:unauthorized)
       end

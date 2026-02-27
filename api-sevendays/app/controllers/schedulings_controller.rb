@@ -1,7 +1,7 @@
 class SchedulingsController < ApplicationController
   before_action :authenticate_user!
   before_action :ensure_non_owner!
-  before_action :set_diary
+  before_action :set_diary, except: [ :sidebar ]
 
   def index
     return if performed?
@@ -84,6 +84,19 @@ class SchedulingsController < ApplicationController
     else
       render_validation_error(details: result.errors)
     end
+  end
+
+  def sidebar
+    return if performed?
+
+    @schedulings = current_user.schedulings
+      .includes(diary: :user)
+      .marked
+      .where(date: Time.zone.today)
+      .order(time: :desc, created_at: :desc)
+      .limit(10)
+
+    render :sidebar, status: :ok
   end
 
   private

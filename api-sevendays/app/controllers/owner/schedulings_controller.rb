@@ -70,6 +70,20 @@ class Owner::SchedulingsController < ApplicationController
     end
   end
 
+  def sidebar
+    return if performed?
+
+    authorize @diary, :schedule?
+    @schedulings = @diary.schedulings
+      .includes(:user)
+      .marked
+      .where(date: Time.zone.today)
+      .order(time: :desc, created_at: :desc)
+      .limit(10)
+
+    render :sidebar, status: :ok
+  end
+
   private
   def scheduling_params
     params.require(:scheduling).permit(:user_email, :date, :time)

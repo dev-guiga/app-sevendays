@@ -4,6 +4,7 @@ Rails.application.routes.draw do
   scope path: "api", defaults: { format: :json } do
     resources :users, only: [ :create ]
     resource :user, only: [ :show ]
+    get "sidebar/schedulings", to: "schedulings#sidebar"
 
     devise_for :users, skip: [ :registrations ], controllers: {
       passwords: "devise/passwords",
@@ -12,6 +13,7 @@ Rails.application.routes.draw do
 
     namespace :owner do
       resource :profile, only: [ :update ], controller: "users"
+      get "sidebar/schedulings", to: "schedulings#sidebar"
 
       resource :diary, only: [ :create, :show, :update ], controller: "diaries" do
         resources :schedulings, only: [ :index, :create, :update, :destroy ]
