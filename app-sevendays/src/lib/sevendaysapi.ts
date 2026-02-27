@@ -39,6 +39,7 @@ export class SevendaysApiRequest {
       baseURL: buildApiBaseUrl(),
       headers: {
         "Content-Type": "application/json",
+        Accept: "application/json",
         ...(token ? { Authorization: token } : {}),
         ...headers,
       },
