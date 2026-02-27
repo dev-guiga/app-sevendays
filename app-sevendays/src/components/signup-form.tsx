@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   SignupFieldErrors,
@@ -9,7 +9,7 @@ import type {
 import { SignupStepOne } from "@/components/signup-steps/signup-step-one";
 import { SignupStepTwo } from "@/components/signup-steps/signup-step-two";
 import { SignupStepsIndicator } from "@/components/signup-steps/signup-steps-indicator";
-import { Field, FieldDescription, FieldError, FieldGroup } from "@/components/ui/field";
+import { FieldGroup } from "@/components/ui/field";
 import {
   buildSignupPayload,
   signupFormSchema,
@@ -28,6 +28,10 @@ interface SignupFormProps {
 
 type SignupStep = 1 | 2;
 type ValidationIssue = { path: readonly PropertyKey[]; message: string };
+type SignupToast = {
+  type: "success" | "error";
+  message: string;
+};
 
 const stepOneFieldNames: SignupFieldName[] = [
   "first_name",
@@ -209,12 +213,23 @@ export function SignupForm({
 }: React.ComponentProps<"form"> & SignupFormProps) {
   const [currentStep, setCurrentStep] = useState<SignupStep>(1);
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<SignupToast | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formRef = useRef<HTMLFormElement>(null);
   const status = useMemo(() => getSignupStatus(userType), [userType]);
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setToast(null);
+    }, 4000);
+
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   const clearStepErrors = (stepFields: readonly SignupFieldName[]) => {
     setFieldErrors((previous) => {
@@ -258,19 +273,8 @@ export function SignupForm({
     });
   };
 
-  const clearFormMessages = () => {
-    if (formError) {
-      setFormError(null);
-    }
-
-    if (successMessage) {
-      setSuccessMessage(null);
-    }
-  };
-
   const handleFieldChange = (fieldName: SignupFieldName) => {
     clearFieldError(fieldName);
-    clearFormMessages();
   };
 
   const validateStepOne = (formValues: SignupFormValues): boolean => {
@@ -328,8 +332,6 @@ export function SignupForm({
     }
 
     event.preventDefault();
-    setFormError(null);
-    setSuccessMessage(null);
 
     const formElement = event.currentTarget;
     const formValues = readFormValues(new FormData(formElement), status);
@@ -357,6 +359,7 @@ export function SignupForm({
 
     const payload = buildSignupPayload(parsedValues.data);
 
+    setToast(null);
     setIsSubmitting(true);
     setFieldErrors({});
 
@@ -366,7 +369,7 @@ export function SignupForm({
       formElement.reset();
       setCurrentStep(1);
       setFieldErrors({});
-      setSuccessMessage("Conta criada com sucesso.");
+      setToast({ type: "success", message: "Conta criada com sucesso." });
       setIsSubmitting(false);
       return;
     }
@@ -378,9 +381,9 @@ export function SignupForm({
 
       const hasStepOneErrors = stepOneFieldNames.some((field) => apiFieldErrors[field]);
       setCurrentStep(hasStepOneErrors ? 1 : 2);
-      setFormError(getApiFormError(responseData));
+      setToast({ type: "error", message: getApiFormError(responseData) });
     } else {
-      setFormError("Nao foi possivel conectar com a API.");
+      setToast({ type: "error", message: "Nao foi possivel conectar com a API." });
     }
 
     setIsSubmitting(false);
@@ -394,6 +397,21 @@ export function SignupForm({
       noValidate
       {...props}
     >
+      {toast ? (
+        <div className="fixed top-6 right-6 z-50">
+          <div
+            role="status"
+            aria-live="polite"
+            className={cn(
+              "rounded-md px-4 py-3 text-sm text-white shadow-lg",
+              toast.type === "success" ? "bg-green-600" : "bg-red-600"
+            )}
+          >
+            {toast.message}
+          </div>
+        </div>
+      ) : null}
+
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Crie sua conta</h1>
@@ -420,20 +438,6 @@ export function SignupForm({
           onBack={handleBackToPreviousStep}
           isSubmitting={isSubmitting}
         />
-
-        {formError ? (
-          <Field>
-            <FieldError className="mt-1 text-xs">{formError}</FieldError>
-          </Field>
-        ) : null}
-
-        {successMessage ? (
-          <Field>
-            <FieldDescription className="text-center text-green-600">
-              {successMessage}
-            </FieldDescription>
-          </Field>
-        ) : null}
       </FieldGroup>
     </form>
   );

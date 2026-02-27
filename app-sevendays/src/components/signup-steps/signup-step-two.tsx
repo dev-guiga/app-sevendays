@@ -6,6 +6,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { CircleNotchIcon } from "@phosphor-icons/react";
 import type {
   SignupFieldErrors,
   SignupFieldName,
@@ -122,7 +123,14 @@ export function SignupStepTwo({
             disabled={isSubmitting}
             className="w-full flex-1"
           >
-            {isSubmitting ? "Criando conta..." : "Criar conta"}
+            {isSubmitting ? (
+              <>
+                <CircleNotchIcon size={14} className="animate-spin" />
+                Criando conta...
+              </>
+            ) : (
+              "Criar conta"
+            )}
           </Button>
         </div>
       </div>
