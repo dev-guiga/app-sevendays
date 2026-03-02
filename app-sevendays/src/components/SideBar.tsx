@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import { SidebarOwner } from "@/components/SidebarOwner";
 import { SidebarUser } from "@/components/SidebarUser";
 import { Button } from "@/components/ui/button";
@@ -143,47 +144,38 @@ function SidebarSectionSkeleton() {
 export function SidebarByRole() {
   const router = useRouter();
 
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadCurrentUser() {
-      setIsLoadingUser(true);
-
+  const currentUserQuery = useQuery({
+    queryKey: ["current-user"],
+    queryFn: async () => {
       const result = await sevendaysapi.get<CurrentUserResponse>("/user", {
         withCredentials: true,
       });
 
-      if (ignore) {
-        return;
-      }
-
       if (result.statusCode === 401 || result.statusCode === 403) {
-        setCurrentUser(null);
-        setIsLoadingUser(false);
-        return;
+        return null;
       }
 
       if (result.error || result.statusCode !== 200 || !result.data?.user) {
-        toast.error("Nao foi possivel carregar os dados do usuario.");
-        setCurrentUser(null);
-        setIsLoadingUser(false);
-        return;
+        throw new Error("Nao foi possivel carregar os dados do usuario.");
       }
 
-      setCurrentUser(result.data.user);
-      setIsLoadingUser(false);
+      return result.data.user;
+    },
+    staleTime: 12_000,
+  });
+
+  useEffect(() => {
+    if (!currentUserQuery.isError) {
+      return;
     }
 
-    void loadCurrentUser();
+    toast.error("Nao foi possivel carregar os dados do usuario.");
+  }, [currentUserQuery.isError, currentUserQuery.errorUpdatedAt]);
 
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  const currentUser = currentUserQuery.data ?? null;
+  const isLoadingUser = currentUserQuery.isPending;
 
   const handleLogout = async () => {
     if (isLoggingOut) {

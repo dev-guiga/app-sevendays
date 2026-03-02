@@ -19,15 +19,7 @@ type SevendaysApiFailure = {
 export type SevendaysApiResponse<T> = SevendaysApiSuccess<T> | SevendaysApiFailure;
 
 function buildApiBaseUrl() {
-  if (typeof window !== "undefined") {
-    return "/api/";
-  }
-
-  const internalUrl = process.env.SEVENDAYS_API_INTERNAL_URL;
-  const configuredUrl = internalUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
-  const trimmedUrl = configuredUrl.replace(/\/$/, "");
-
-  return trimmedUrl.endsWith("/api") ? `${trimmedUrl}/` : `${trimmedUrl}/api/`;
+  return "/api/";
 }
 
 export class SevendaysApiRequest {

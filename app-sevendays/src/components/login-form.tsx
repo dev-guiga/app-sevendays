@@ -17,7 +17,7 @@ import { sevendaysapi } from "@/lib/sevendaysapi";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { UserIcon } from "@phosphor-icons/react/dist/ssr";
+import { UserIcon } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 type LoginPayload = {

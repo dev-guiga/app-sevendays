@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import { DatePickerSimple } from "@/components/DatePickerSimple";
 import { Button } from "@/components/ui/button";
 import {
@@ -180,13 +181,7 @@ interface TableClientsProps {
 }
 
 export function TableClients({ reloadToken = 0 }: TableClientsProps) {
-  const [schedulings, setSchedulings] = useState<OwnerScheduling[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [hasPrev, setHasPrev] = useState(false);
-  const [hasNext, setHasNext] = useState(false);
   const [sortField, setSortField] = useState<SortField>(DEFAULT_SORT_FIELD);
   const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION);
   const [statusFilter, setStatusFilter] = useState<OwnerSchedulingFilterStatus>(
@@ -197,12 +192,27 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
   const [startDateFilter, setStartDateFilter] = useState<Date>(buildDefaultStartDate);
   const [endDateFilter, setEndDateFilter] = useState<Date>(buildDefaultEndDate);
 
-  useEffect(() => {
-    let ignore = false;
+  const startDateFilterValue = useMemo(
+    () => format(startDateFilter, "yyyy-MM-dd"),
+    [startDateFilter],
+  );
+  const endDateFilterValue = useMemo(
+    () => format(endDateFilter, "yyyy-MM-dd"),
+    [endDateFilter],
+  );
 
-    async function loadOwnerSchedulings() {
-      setIsLoading(true);
-
+  const ownerSchedulingsQuery = useQuery({
+    queryKey: [
+      "owner-schedulings",
+      reloadToken,
+      currentPage,
+      PER_PAGE,
+      statusFilter,
+      appliedSearchText,
+      startDateFilterValue,
+      endDateFilterValue,
+    ],
+    queryFn: async () => {
       const result = await sevendaysapi.get<PaginatedOwnerSchedulingsResponse>(
         "/owner/diary/schedulings",
         {
@@ -212,15 +222,11 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
             per_page: PER_PAGE,
             status: statusFilter,
             ...(appliedSearchText ? { query: appliedSearchText } : {}),
-            ...(startDateFilter ? { date_from: format(startDateFilter, "yyyy-MM-dd") } : {}),
-            ...(endDateFilter ? { date_to: format(endDateFilter, "yyyy-MM-dd") } : {}),
+            ...(startDateFilter ? { date_from: startDateFilterValue } : {}),
+            ...(endDateFilter ? { date_to: endDateFilterValue } : {}),
           },
         },
       );
-
-      if (ignore) {
-        return;
-      }
 
       if (
         result.error ||
@@ -228,36 +234,50 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
         !result.data?.success ||
         !Array.isArray(result.data.schedulings)
       ) {
-        toast.error("Não foi possível carregar os horários agendados.");
-        setSchedulings([]);
-        setTotalPages(1);
-        setTotalCount(0);
-        setHasPrev(false);
-        setHasNext(false);
-        setIsLoading(false);
-        return;
+        throw new Error("Não foi possível carregar os horários agendados.");
       }
 
       const pagination = result.data.pagination;
-      const serverPage = Math.max(1, Number(pagination?.page) || currentPage);
+      return {
+        schedulings: result.data.schedulings,
+        page: Math.max(1, Number(pagination?.page) || currentPage),
+        totalPages: Math.max(1, Number(pagination?.total_pages) || 1),
+        totalCount: Math.max(0, Number(pagination?.total_count) || 0),
+        hasPrev: Boolean(pagination?.has_prev),
+        hasNext: Boolean(pagination?.has_next),
+      };
+    },
+    placeholderData: (previous) => previous,
+    staleTime: 30_000,
+  });
 
-      setSchedulings(result.data.schedulings);
-      if (serverPage !== currentPage) {
-        setCurrentPage(serverPage);
-      }
-      setTotalPages(Math.max(1, Number(pagination?.total_pages) || 1));
-      setTotalCount(Math.max(0, Number(pagination?.total_count) || 0));
-      setHasPrev(Boolean(pagination?.has_prev));
-      setHasNext(Boolean(pagination?.has_next));
-      setIsLoading(false);
+  useEffect(() => {
+    if (!ownerSchedulingsQuery.isError) {
+      return;
     }
 
-    void loadOwnerSchedulings();
+    toast.error("Não foi possível carregar os horários agendados.");
+  }, [ownerSchedulingsQuery.isError, ownerSchedulingsQuery.errorUpdatedAt]);
 
-    return () => {
-      ignore = true;
-    };
-  }, [appliedSearchText, currentPage, endDateFilter, reloadToken, startDateFilter, statusFilter]);
+  useEffect(() => {
+    if (!ownerSchedulingsQuery.data) {
+      return;
+    }
+
+    if (ownerSchedulingsQuery.data.page !== currentPage) {
+      setCurrentPage(ownerSchedulingsQuery.data.page);
+    }
+  }, [currentPage, ownerSchedulingsQuery.data]);
+
+  const schedulings = useMemo(
+    () => ownerSchedulingsQuery.data?.schedulings ?? [],
+    [ownerSchedulingsQuery.data?.schedulings],
+  );
+  const totalPages = ownerSchedulingsQuery.data?.totalPages ?? 1;
+  const totalCount = ownerSchedulingsQuery.data?.totalCount ?? 0;
+  const hasPrev = ownerSchedulingsQuery.data?.hasPrev ?? false;
+  const hasNext = ownerSchedulingsQuery.data?.hasNext ?? false;
+  const isLoading = ownerSchedulingsQuery.isPending;
 
   const sortedSchedulings = useMemo(() => {
     const items = [ ...schedulings ];

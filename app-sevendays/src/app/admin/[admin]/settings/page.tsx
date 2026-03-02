@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import { DatePickerSimple } from "@/components/DatePickerSimple";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,21 +18,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useUser } from "@/contexts/user-context";
 import { sevendaysapi } from "@/lib/sevendaysapi";
 import { CircleNotch } from "@phosphor-icons/react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-
-type OwnerStatus = "owner" | "user" | "standard";
-
-type CurrentOwnerResponse = {
-  user?: {
-    id?: number;
-    full_name?: string;
-    username?: string;
-    status?: OwnerStatus;
-  };
-};
 
 type OwnerDiaryResponse = {
   success?: boolean;
@@ -360,8 +351,8 @@ function validateSchedulingForm({
 export default function AdminSettingsPage() {
   const params = useParams<{ admin?: string }>();
   const router = useRouter();
+  const { currentUser, isLoadingUser } = useUser();
 
-  const [isLoading, setIsLoading] = useState(true);
   const [isSavingDiary, setIsSavingDiary] = useState(false);
   const [isSavingScheduling, setIsSavingScheduling] = useState(false);
   const [hasDiary, setHasDiary] = useState(false);
@@ -378,6 +369,9 @@ export default function AdminSettingsPage() {
   const [endDate, setEndDate] = useState("");
 
   const routeOwnerId = Number(params?.admin);
+  const authenticatedOwnerId =
+    currentUser?.status === "owner" ? currentUser.id : undefined;
+  const isOwnerReady = Boolean(authenticatedOwnerId);
 
   const pageTitle = useMemo(() => {
     if (!hasDiary) {
@@ -392,53 +386,41 @@ export default function AdminSettingsPage() {
   }, [hasDiary, hasSchedulingRule]);
 
   useEffect(() => {
-    let ignore = false;
+    if (isLoadingUser) {
+      return;
+    }
 
-    async function loadPageData() {
-      setIsLoading(true);
+    if (!currentUser) {
+      router.replace("/login");
+      return;
+    }
 
-      const currentUserResult = await sevendaysapi.get<CurrentOwnerResponse>("/user", {
-        withCredentials: true,
-      });
-
-      if (ignore) {
-        return;
+    if (currentUser.status !== "owner" || !currentUser.id) {
+      toast.error("Usuário autenticado não é um owner.");
+      if (currentUser.id) {
+        router.replace(`/${currentUser.id}/portal`);
       }
+      return;
+    }
 
-      if (
-        currentUserResult.error ||
-        currentUserResult.statusCode !== 200 ||
-        !currentUserResult.data?.user
-      ) {
-        toast.error("Não foi possível carregar o usuário autenticado.");
-        setIsLoading(false);
-        return;
-      }
+    if (Number.isFinite(routeOwnerId) && routeOwnerId !== currentUser.id) {
+      router.replace(`/admin/${currentUser.id}/settings`);
+    }
+  }, [currentUser, isLoadingUser, routeOwnerId, router]);
 
-      const currentUser = currentUserResult.data.user;
-      if (currentUser.status !== "owner" || !currentUser.id) {
-        toast.error("Usuário autenticado não é um owner.");
-        setIsLoading(false);
-        return;
-      }
-
-      if (Number.isFinite(routeOwnerId) && routeOwnerId !== currentUser.id) {
-        router.replace(`/admin/${currentUser.id}/settings`);
-      }
-
+  const diaryQuery = useQuery({
+    queryKey: ["owner-settings-diary", authenticatedOwnerId],
+    enabled: isOwnerReady,
+    queryFn: async () => {
       const diaryResult = await sevendaysapi.get<OwnerDiaryResponse>("/owner/diary", {
         withCredentials: true,
       });
 
-      if (ignore) {
-        return;
-      }
-
       if (diaryResult.statusCode === 404) {
-        setHasDiary(false);
-        setHasSchedulingRule(false);
-        setIsLoading(false);
-        return;
+        return {
+          hasDiary: false,
+          diaryData: null as OwnerDiaryResponse["diary_data"] | null,
+        };
       }
 
       if (
@@ -446,30 +428,37 @@ export default function AdminSettingsPage() {
         diaryResult.statusCode !== 200 ||
         !diaryResult.data?.success
       ) {
-        toast.error(
-          extractApiErrorMessage(diaryResult.error, "Não foi possível carregar os dados da agenda."),
+        throw new Error(
+          extractApiErrorMessage(
+            diaryResult.error,
+            "Não foi possível carregar os dados da agenda.",
+          ),
         );
-        setIsLoading(false);
-        return;
       }
 
-      setHasDiary(true);
-      setDiaryTitle(diaryResult.data.diary_data?.title ?? "");
-      setDiaryDescription(diaryResult.data.diary_data?.description ?? "");
+      return {
+        hasDiary: true,
+        diaryData: diaryResult.data.diary_data ?? null,
+      };
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
 
+  const schedulingRuleQuery = useQuery({
+    queryKey: ["owner-settings-scheduling-rule", authenticatedOwnerId],
+    enabled: isOwnerReady && diaryQuery.data?.hasDiary === true,
+    queryFn: async () => {
       const schedulingRuleResult = await sevendaysapi.get<OwnerSchedulingRuleResponse>(
         "/owner/diary/scheduling_rule",
         { withCredentials: true },
       );
 
-      if (ignore) {
-        return;
-      }
-
       if (schedulingRuleResult.statusCode === 404) {
-        setHasSchedulingRule(false);
-        setIsLoading(false);
-        return;
+        return {
+          hasSchedulingRule: false,
+          schedulingRule: null as SchedulingRuleDto | null,
+        };
       }
 
       if (
@@ -478,36 +467,98 @@ export default function AdminSettingsPage() {
         !schedulingRuleResult.data?.success ||
         !schedulingRuleResult.data.scheduling_rule
       ) {
-        toast.error(
+        throw new Error(
           extractApiErrorMessage(
             schedulingRuleResult.error,
             "Não foi possível carregar o funcionamento da agenda.",
           ),
         );
-        setIsLoading(false);
-        return;
       }
 
-      const parsedRule = parseSchedulingRuleToForm(
-        schedulingRuleResult.data.scheduling_rule,
-      );
+      return {
+        hasSchedulingRule: true,
+        schedulingRule: schedulingRuleResult.data.scheduling_rule,
+      };
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-      setHasSchedulingRule(true);
-      setStartTime(parsedRule.startTime);
-      setEndTime(parsedRule.endTime);
-      setSessionDuration(parsedRule.sessionDuration);
-      setSelectedWeekDays(parsedRule.weekDays);
-      setStartDate(parsedRule.startDate);
-      setEndDate(parsedRule.endDate);
-      setIsLoading(false);
+  useEffect(() => {
+    if (!diaryQuery.isError) {
+      return;
     }
 
-    void loadPageData();
+    const errorMessage =
+      diaryQuery.error instanceof Error
+        ? diaryQuery.error.message
+        : "Não foi possível carregar os dados da agenda.";
+    toast.error(errorMessage);
+  }, [diaryQuery.error, diaryQuery.errorUpdatedAt, diaryQuery.isError]);
 
-    return () => {
-      ignore = true;
-    };
-  }, [routeOwnerId, router]);
+  useEffect(() => {
+    if (!schedulingRuleQuery.isError) {
+      return;
+    }
+
+    const errorMessage =
+      schedulingRuleQuery.error instanceof Error
+        ? schedulingRuleQuery.error.message
+        : "Não foi possível carregar o funcionamento da agenda.";
+    toast.error(errorMessage);
+  }, [
+    schedulingRuleQuery.error,
+    schedulingRuleQuery.errorUpdatedAt,
+    schedulingRuleQuery.isError,
+  ]);
+
+  useEffect(() => {
+    if (!diaryQuery.data) {
+      return;
+    }
+
+    if (!diaryQuery.data.hasDiary) {
+      setHasDiary(false);
+      setHasSchedulingRule(false);
+      return;
+    }
+
+    setHasDiary(true);
+    setDiaryTitle(diaryQuery.data.diaryData?.title ?? "");
+    setDiaryDescription(diaryQuery.data.diaryData?.description ?? "");
+  }, [diaryQuery.data]);
+
+  useEffect(() => {
+    if (!diaryQuery.data?.hasDiary || !schedulingRuleQuery.data) {
+      return;
+    }
+
+    if (
+      !schedulingRuleQuery.data.hasSchedulingRule ||
+      !schedulingRuleQuery.data.schedulingRule
+    ) {
+      setHasSchedulingRule(false);
+      return;
+    }
+
+    const parsedRule = parseSchedulingRuleToForm(
+      schedulingRuleQuery.data.schedulingRule,
+    );
+
+    setHasSchedulingRule(true);
+    setStartTime(parsedRule.startTime);
+    setEndTime(parsedRule.endTime);
+    setSessionDuration(parsedRule.sessionDuration);
+    setSelectedWeekDays(parsedRule.weekDays);
+    setStartDate(parsedRule.startDate);
+    setEndDate(parsedRule.endDate);
+  }, [diaryQuery.data?.hasDiary, schedulingRuleQuery.data]);
+
+  const isLoading =
+    isLoadingUser ||
+    (isOwnerReady &&
+      (diaryQuery.isPending ||
+        (diaryQuery.data?.hasDiary === true && schedulingRuleQuery.isPending)));
 
   const handleToggleWeekDay = (weekDay: number, checked: boolean) => {
     setSelectedWeekDays((previous) => {

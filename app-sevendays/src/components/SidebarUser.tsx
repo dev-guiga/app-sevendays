@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -117,56 +118,44 @@ export function SidebarUser({
   isLoggingOut,
   onLogout,
 }: SidebarUserProps) {
+  const queryClient = useQueryClient();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedScheduling, setSelectedScheduling] = useState<SidebarSchedulingCard | null>(null);
-  const [schedulings, setSchedulings] = useState<SidebarSchedulingCard[]>([]);
-  const [isLoadingSchedulings, setIsLoadingSchedulings] = useState(true);
   const [isCancellingScheduling, setIsCancellingScheduling] = useState(false);
 
-  const loadUserSidebarSchedulings = useCallback(async () => {
-    setIsLoadingSchedulings(true);
+  const userSidebarSchedulingsQuery = useQuery({
+    queryKey: ["user-sidebar-latest-schedulings"],
+    queryFn: async () => {
+      const result = await sevendaysapi.get<SidebarSchedulingResponse>(
+        "/sidebar/schedulings/latest",
+        {
+          withCredentials: true,
+        },
+      );
 
-    const result = await sevendaysapi.get<SidebarSchedulingResponse>(
-      "/sidebar/schedulings/latest",
-      {
-        withCredentials: true,
-      },
-    );
-
-    if (result.statusCode === 401 || result.statusCode === 403) {
-      setSchedulings([]);
-      setIsLoadingSchedulings(false);
-      return;
-    }
-
-    if (result.error || result.statusCode !== 200 || !result.data?.success) {
-      toast.error("Nao foi possivel carregar os agendamentos da sidebar.");
-      setSchedulings([]);
-      setIsLoadingSchedulings(false);
-      return;
-    }
-
-    setSchedulings(mapSidebarSchedulingsToCards(result.data.schedulings));
-    setIsLoadingSchedulings(false);
-  }, []);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadSafely() {
-      if (ignore) {
-        return;
+      if (result.statusCode === 401 || result.statusCode === 403) {
+        return [] as SidebarSchedulingCard[];
       }
 
-      await loadUserSidebarSchedulings();
+      if (result.error || result.statusCode !== 200 || !result.data?.success) {
+        throw new Error("Nao foi possivel carregar os agendamentos da sidebar.");
+      }
+
+      return mapSidebarSchedulingsToCards(result.data.schedulings);
+    },
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (!userSidebarSchedulingsQuery.isError) {
+      return;
     }
 
-    void loadSafely();
+    toast.error("Nao foi possivel carregar os agendamentos da sidebar.");
+  }, [userSidebarSchedulingsQuery.isError, userSidebarSchedulingsQuery.errorUpdatedAt]);
 
-    return () => {
-      ignore = true;
-    };
-  }, [loadUserSidebarSchedulings]);
+  const schedulings = userSidebarSchedulingsQuery.data ?? [];
+  const isLoadingSchedulings = userSidebarSchedulingsQuery.isPending;
 
   const handleCancelClick = (scheduling: SidebarSchedulingCard) => {
     setSelectedScheduling(scheduling);
@@ -197,7 +186,9 @@ export function SidebarUser({
     }
 
     toast.success("Horario cancelado com sucesso.");
-    await loadUserSidebarSchedulings();
+    await queryClient.invalidateQueries({
+      queryKey: ["user-sidebar-latest-schedulings"],
+    });
     setIsCancellingScheduling(false);
     setCancelDialogOpen(false);
     setSelectedScheduling(null);

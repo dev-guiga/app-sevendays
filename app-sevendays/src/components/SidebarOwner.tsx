@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -82,15 +83,9 @@ export function SidebarOwner({
   isLoggingOut,
   onLogout,
 }: SidebarOwnerProps) {
-  const [schedulings, setSchedulings] = useState<SidebarSchedulingCard[]>([]);
-  const [isLoadingSchedulings, setIsLoadingSchedulings] = useState(true);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadOwnerSidebarSchedulings() {
-      setIsLoadingSchedulings(true);
-
+  const ownerSchedulingsQuery = useQuery({
+    queryKey: ["owner-sidebar-schedulings"],
+    queryFn: async () => {
       const result = await sevendaysapi.get<SidebarSchedulingResponse>(
         "/owner/sidebar/schedulings",
         {
@@ -98,33 +93,29 @@ export function SidebarOwner({
         },
       );
 
-      if (ignore) {
-        return;
-      }
-
       if (result.statusCode === 401 || result.statusCode === 403) {
-        setSchedulings([]);
-        setIsLoadingSchedulings(false);
-        return;
+        return [] as SidebarSchedulingCard[];
       }
 
       if (result.error || result.statusCode !== 200 || !result.data?.success) {
-        toast.error("Nao foi possivel carregar os agendamentos do owner.");
-        setSchedulings([]);
-        setIsLoadingSchedulings(false);
-        return;
+        throw new Error("Nao foi possivel carregar os agendamentos do owner.");
       }
 
-      setSchedulings(mapSidebarSchedulingsToCards(result.data.schedulings));
-      setIsLoadingSchedulings(false);
+      return mapSidebarSchedulingsToCards(result.data.schedulings);
+    },
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (!ownerSchedulingsQuery.isError) {
+      return;
     }
 
-    void loadOwnerSidebarSchedulings();
+    toast.error("Nao foi possivel carregar os agendamentos do owner.");
+  }, [ownerSchedulingsQuery.isError, ownerSchedulingsQuery.errorUpdatedAt]);
 
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  const schedulings = ownerSchedulingsQuery.data ?? [];
+  const isLoadingSchedulings = ownerSchedulingsQuery.isPending;
 
   return (
     <Sheet>

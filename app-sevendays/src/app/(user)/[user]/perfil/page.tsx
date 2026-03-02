@@ -6,32 +6,28 @@ import AvatarProfile from "@/components/Avatar";
 import { TableUserSchedulings } from "@/components/TableUserSchedulings";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { sevendaysapi } from "@/lib/sevendaysapi";
+import { useUser } from "@/contexts/user-context";
 import { CalendarDays, IdCard, Mail, MapPin, UserRound } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-type CurrentUserResponse = {
-  user?: {
-    id?: number;
-    first_name?: string;
-    last_name?: string;
-    full_name?: string;
-    username?: string;
-    email?: string;
-    status?: "owner" | "user" | "standard";
-    cpf?: string;
-    birth_date?: string;
-    address?: {
-      address?: string;
-      city?: string;
-      state?: string;
-      neighborhood?: string;
-    };
+type UserProfile = {
+  id?: number;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  username?: string;
+  email?: string;
+  status?: "owner" | "user" | "standard";
+  cpf?: string;
+  birth_date?: string;
+  address?: {
+    address?: string;
+    city?: string;
+    state?: string;
+    neighborhood?: string;
   };
 };
-
-type UserProfile = NonNullable<CurrentUserResponse["user"]>;
 
 function formatAddress(address?: UserProfile["address"]) {
   if (!address) {
@@ -81,6 +77,7 @@ function getUserName(user: UserProfile | null) {
 export default function UserProfilePage() {
   const params = useParams<{ user?: string | string[] }>();
   const router = useRouter();
+  const { currentUser, isLoadingUser } = useUser();
 
   const routeUserId = Number(
     Array.isArray(params?.user)
@@ -89,7 +86,6 @@ export default function UserProfilePage() {
   );
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   const avatarUrl = useMemo(() => {
     const seed = getUserName(profile);
@@ -117,56 +113,35 @@ export default function UserProfilePage() {
   }, [profile]);
 
   useEffect(() => {
-    let ignore = false;
-
-    async function loadProfile() {
-      setIsLoading(true);
-
-      const result = await sevendaysapi.get<CurrentUserResponse>("/user", {
-        withCredentials: true,
-      });
-
-      if (ignore) {
-        return;
-      }
-
-      if (result.statusCode === 401 || result.statusCode === 403) {
-        toast.error("Sessao expirada. Faca login novamente.");
-        router.replace("/login");
-        return;
-      }
-
-      if (result.error || result.statusCode !== 200 || !result.data?.user) {
-        toast.error("Nao foi possivel carregar os dados do perfil.");
-        setIsLoading(false);
-        return;
-      }
-
-      const currentUser = result.data.user;
-      if (currentUser.status === "owner") {
-        if (currentUser.id) {
-          router.replace(`/admin/${currentUser.id}/dashboard`);
-        }
-        return;
-      }
-
-      if (
-        currentUser.id &&
-        (!Number.isFinite(routeUserId) || routeUserId !== currentUser.id)
-      ) {
-        router.replace(`/${currentUser.id}/perfil`);
-      }
-
-      setProfile(currentUser);
-      setIsLoading(false);
+    if (isLoadingUser) {
+      return;
     }
 
-    void loadProfile();
+    if (!currentUser) {
+      toast.error("Sessao expirada. Faca login novamente.");
+      router.replace("/login");
+      return;
+    }
 
-    return () => {
-      ignore = true;
-    };
-  }, [routeUserId, router]);
+    if (currentUser.status === "owner") {
+      if (currentUser.id) {
+        router.replace(`/admin/${currentUser.id}/dashboard`);
+      }
+      return;
+    }
+
+    if (
+      currentUser.id &&
+      (!Number.isFinite(routeUserId) || routeUserId !== currentUser.id)
+    ) {
+      router.replace(`/${currentUser.id}/perfil`);
+      return;
+    }
+
+    setProfile(currentUser);
+  }, [currentUser, isLoadingUser, routeUserId, router]);
+
+  const isLoading = isLoadingUser || !profile;
 
   return (
     <div className="w-full max-w-7xl flex flex-col items-start justify-start gap-10 sm:mx-auto mx-0 px-4">

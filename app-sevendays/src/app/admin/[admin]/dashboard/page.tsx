@@ -11,6 +11,7 @@ import {
 import { TableClients } from "@/components/TableClients";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUser } from "@/contexts/user-context";
 import { sevendaysapi } from "@/lib/sevendaysapi";
 import { BookOpen, MapPin, PencilSimple, User } from "@phosphor-icons/react";
 import { useParams, useRouter } from "next/navigation";
@@ -22,7 +23,7 @@ type CurrentOwnerResponse = {
     full_name?: string;
     username?: string;
     email?: string;
-    status?: "owner" | "user";
+    status?: "owner" | "user" | "standard";
     professional_description?: string | null;
     professional_document?: string | null;
     professional_branch?: string | null;
@@ -66,9 +67,9 @@ function getOwnerName(owner: NonNullable<CurrentOwnerResponse["user"]>) {
 export default function HomeAdmin() {
   const params = useParams<{ admin?: string }>();
   const router = useRouter();
+  const { currentUser, isLoadingUser, refreshCurrentUser } = useUser();
 
   const [owner, setOwner] = useState<Owner | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [schedulingsReloadToken, setSchedulingsReloadToken] = useState(0);
@@ -104,46 +105,32 @@ export default function HomeAdmin() {
   }, [owner]);
 
   useEffect(() => {
-    let ignore = false;
-
-    async function loadOwner() {
-      setIsLoading(true);
-
-      const result = await sevendaysapi.get<CurrentOwnerResponse>("/user", {
-        withCredentials: true,
-      });
-
-      if (ignore) {
-        return;
-      }
-
-      if (result.error || result.statusCode !== 200 || !result.data?.user) {
-        toast.error("Nao foi possivel carregar os dados do owner.");
-        setIsLoading(false);
-        return;
-      }
-
-      const currentOwner = result.data.user;
-      if (currentOwner.status !== "owner") {
-        toast.error("Usuario autenticado nao e um owner.");
-        setIsLoading(false);
-        return;
-      }
-
-      if (currentOwner.id && Number.isFinite(routeOwnerId) && currentOwner.id !== routeOwnerId) {
-        router.replace(`/admin/${currentOwner.id}/dashboard`);
-      }
-
-      setOwner(currentOwner);
-      setIsLoading(false);
+    if (isLoadingUser) {
+      return;
     }
 
-    void loadOwner();
+    if (!currentUser) {
+      router.replace("/login");
+      return;
+    }
 
-    return () => {
-      ignore = true;
-    };
-  }, [routeOwnerId, router]);
+    if (currentUser.status !== "owner") {
+      toast.error("Usuario autenticado nao e um owner.");
+      if (currentUser.id) {
+        router.replace(`/${currentUser.id}/portal`);
+      }
+      return;
+    }
+
+    if (currentUser.id && Number.isFinite(routeOwnerId) && currentUser.id !== routeOwnerId) {
+      router.replace(`/admin/${currentUser.id}/dashboard`);
+      return;
+    }
+
+    setOwner(currentUser);
+  }, [currentUser, isLoadingUser, routeOwnerId, router]);
+
+  const isLoading = isLoadingUser || !owner;
 
   const handleSaveProfile = async (payload: OwnerProfileUpdateInput) => {
     setIsSavingProfile(true);
@@ -168,6 +155,7 @@ export default function HomeAdmin() {
     }
 
     setOwner(updatedOwner);
+    void refreshCurrentUser({ silent: true });
     setIsSavingProfile(false);
     setIsEditModalOpen(false);
     toast.success("Perfil atualizado com sucesso.");

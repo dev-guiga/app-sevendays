@@ -1,7 +1,8 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import AvatarProfile from "@/components/Avatar";
 import Calendar20 from "@/components/calendar-20";
 import { Separator } from "@/components/ui/separator";
@@ -135,23 +136,12 @@ export default function PortalPage() {
     ? params.partner[0]
     : params?.partner;
   const diaryId = Number(partnerParam);
+  const isDiaryIdValid = Number.isFinite(diaryId) && diaryId > 0;
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [diary, setDiary] = useState<DiaryDetail | null>(null);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadDiary() {
-      if (!Number.isFinite(diaryId) || diaryId <= 0) {
-        toast.error("Agenda invalida.");
-        setDiary(null);
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-
+  const diaryQuery = useQuery({
+    queryKey: ["diary-details", diaryId],
+    enabled: isDiaryIdValid,
+    queryFn: async () => {
       const result = await sevendaysapi.get<DiaryShowResponse>(
         `/diaries/${diaryId}`,
         {
@@ -159,37 +149,45 @@ export default function PortalPage() {
         },
       );
 
-      if (ignore) {
-        return;
-      }
-
       if (
         result.error ||
         result.statusCode !== 200 ||
         !result.data?.success ||
         !result.data.diary_data
       ) {
-        toast.error(
+        throw new Error(
           extractApiErrorMessage(
             result.error,
             "Nao foi possivel carregar a agenda selecionada.",
           ),
         );
-        setDiary(null);
-        setIsLoading(false);
-        return;
       }
 
-      setDiary(result.data.diary_data);
-      setIsLoading(false);
+      return result.data.diary_data;
+    },
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (!isDiaryIdValid) {
+      toast.error("Agenda invalida.");
+    }
+  }, [isDiaryIdValid]);
+
+  useEffect(() => {
+    if (!diaryQuery.isError) {
+      return;
     }
 
-    void loadDiary();
+    const errorMessage =
+      diaryQuery.error instanceof Error
+        ? diaryQuery.error.message
+        : "Nao foi possivel carregar a agenda selecionada.";
+    toast.error(errorMessage);
+  }, [diaryQuery.error, diaryQuery.errorUpdatedAt, diaryQuery.isError]);
 
-    return () => {
-      ignore = true;
-    };
-  }, [diaryId]);
+  const diary = diaryQuery.data ?? null;
+  const isLoading = isDiaryIdValid && diaryQuery.isPending;
 
   const ownerName = useMemo(() => {
     if (!diary) {

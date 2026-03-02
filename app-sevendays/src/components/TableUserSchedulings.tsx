@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import { DatePickerSimple } from "@/components/DatePickerSimple";
 import { Button } from "@/components/ui/button";
 import {
@@ -220,15 +221,9 @@ function buildPaginationItems(currentPage: number, totalPages: number) {
 }
 
 export function TableUserSchedulings() {
-  const [schedulings, setSchedulings] = useState<UserScheduling[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [hasPrev, setHasPrev] = useState(false);
-  const [hasNext, setHasNext] = useState(false);
   const [sortField, setSortField] = useState<SortField>(DEFAULT_SORT_FIELD);
   const [sortDirection, setSortDirection] = useState<SortDirection>(
     DEFAULT_SORT_DIRECTION,
@@ -246,12 +241,27 @@ export function TableUserSchedulings() {
   const [cancellingScheduling, setCancellingScheduling] =
     useState<UserScheduling | null>(null);
 
-  useEffect(() => {
-    let ignore = false;
+  const startDateFilterValue = useMemo(
+    () => format(startDateFilter, "yyyy-MM-dd"),
+    [startDateFilter],
+  );
+  const endDateFilterValue = useMemo(
+    () => format(endDateFilter, "yyyy-MM-dd"),
+    [endDateFilter],
+  );
 
-    async function loadUserSchedulings() {
-      setIsLoading(true);
-
+  const userSchedulingsQuery = useQuery({
+    queryKey: [
+      "user-schedulings",
+      reloadToken,
+      currentPage,
+      PER_PAGE,
+      statusFilter,
+      appliedSearchText,
+      startDateFilterValue,
+      endDateFilterValue,
+    ],
+    queryFn: async () => {
       const result = await sevendaysapi.get<PaginatedUserSchedulingsResponse>(
         "/user/schedulings",
         {
@@ -261,19 +271,11 @@ export function TableUserSchedulings() {
             per_page: PER_PAGE,
             ...(statusFilter ? { status: statusFilter } : {}),
             ...(appliedSearchText ? { query: appliedSearchText } : {}),
-            ...(startDateFilter
-              ? { date_from: format(startDateFilter, "yyyy-MM-dd") }
-              : {}),
-            ...(endDateFilter
-              ? { date_to: format(endDateFilter, "yyyy-MM-dd") }
-              : {}),
+            ...(startDateFilter ? { date_from: startDateFilterValue } : {}),
+            ...(endDateFilter ? { date_to: endDateFilterValue } : {}),
           },
         },
       );
-
-      if (ignore) {
-        return;
-      }
 
       if (
         result.error ||
@@ -281,43 +283,50 @@ export function TableUserSchedulings() {
         !result.data?.success ||
         !Array.isArray(result.data.schedulings)
       ) {
-        toast.error("Nao foi possivel carregar seus horarios agendados.");
-        setSchedulings([]);
-        setTotalPages(1);
-        setTotalCount(0);
-        setHasPrev(false);
-        setHasNext(false);
-        setIsLoading(false);
-        return;
+        throw new Error("Nao foi possivel carregar seus horarios agendados.");
       }
 
       const pagination = result.data.pagination;
-      const serverPage = Math.max(1, Number(pagination?.page) || currentPage);
+      return {
+        schedulings: result.data.schedulings,
+        page: Math.max(1, Number(pagination?.page) || currentPage),
+        totalPages: Math.max(1, Number(pagination?.total_pages) || 1),
+        totalCount: Math.max(0, Number(pagination?.total_count) || 0),
+        hasPrev: Boolean(pagination?.has_prev),
+        hasNext: Boolean(pagination?.has_next),
+      };
+    },
+    placeholderData: (previous) => previous,
+    staleTime: 30_000,
+  });
 
-      setSchedulings(result.data.schedulings);
-      if (serverPage !== currentPage) {
-        setCurrentPage(serverPage);
-      }
-      setTotalPages(Math.max(1, Number(pagination?.total_pages) || 1));
-      setTotalCount(Math.max(0, Number(pagination?.total_count) || 0));
-      setHasPrev(Boolean(pagination?.has_prev));
-      setHasNext(Boolean(pagination?.has_next));
-      setIsLoading(false);
+  useEffect(() => {
+    if (!userSchedulingsQuery.isError) {
+      return;
     }
 
-    void loadUserSchedulings();
+    toast.error("Nao foi possivel carregar seus horarios agendados.");
+  }, [userSchedulingsQuery.isError, userSchedulingsQuery.errorUpdatedAt]);
 
-    return () => {
-      ignore = true;
-    };
-  }, [
-    appliedSearchText,
-    currentPage,
-    endDateFilter,
-    reloadToken,
-    startDateFilter,
-    statusFilter,
-  ]);
+  useEffect(() => {
+    if (!userSchedulingsQuery.data) {
+      return;
+    }
+
+    if (userSchedulingsQuery.data.page !== currentPage) {
+      setCurrentPage(userSchedulingsQuery.data.page);
+    }
+  }, [currentPage, userSchedulingsQuery.data]);
+
+  const schedulings = useMemo(
+    () => userSchedulingsQuery.data?.schedulings ?? [],
+    [userSchedulingsQuery.data?.schedulings],
+  );
+  const totalPages = userSchedulingsQuery.data?.totalPages ?? 1;
+  const totalCount = userSchedulingsQuery.data?.totalCount ?? 0;
+  const hasPrev = userSchedulingsQuery.data?.hasPrev ?? false;
+  const hasNext = userSchedulingsQuery.data?.hasNext ?? false;
+  const isLoading = userSchedulingsQuery.isPending;
 
   const sortedSchedulings = useMemo(() => {
     const items = [...schedulings];

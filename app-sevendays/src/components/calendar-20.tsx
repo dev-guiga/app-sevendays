@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import { ConfirmationDateModal } from "@/components/ConfirmationDateModal";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -100,8 +101,6 @@ export default function Calendar20({
 }: Calendar20Props) {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = React.useState<string | null>(null);
-  const [availableSlots, setAvailableSlots] = React.useState<AvailableSlot[]>([]);
-  const [isLoadingSlots, setIsLoadingSlots] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const previousSubmitTokenRef = React.useRef<number | undefined>(submitRequestToken);
 
@@ -118,48 +117,60 @@ export default function Calendar20({
     [createEndpoint, diaryId],
   );
 
-  const loadAvailableSlots = React.useCallback(async () => {
-    if (!selectedDateApi || !resolvedDaysEndpoint) {
-      setAvailableSlots([]);
-      setSelectedTime(null);
-      return;
-    }
-
-    setIsLoadingSlots(true);
-
-    const result = await sevendaysapi.get<DiaryDaysResponse>(
-      resolvedDaysEndpoint,
-      {
-        withCredentials: true,
-        params: {
-          date: selectedDateApi,
+  const availableSlotsQuery = useQuery({
+    queryKey: ["diary-days", resolvedDaysEndpoint, selectedDateApi],
+    enabled: Boolean(selectedDateApi && resolvedDaysEndpoint),
+    queryFn: async () => {
+      const result = await sevendaysapi.get<DiaryDaysResponse>(
+        resolvedDaysEndpoint!,
+        {
+          withCredentials: true,
+          params: {
+            date: selectedDateApi,
+          },
         },
-      },
-    );
-
-    if (
-      result.error ||
-      result.statusCode !== 200 ||
-      !result.data?.success ||
-      !Array.isArray(result.data.available_slots)
-    ) {
-      toast.error(
-        extractApiErrorMessage(
-          result.error,
-          "Nao foi possivel carregar os horarios disponiveis para esta data.",
-        ),
       );
-      setAvailableSlots([]);
-      setSelectedTime(null);
-      setIsLoadingSlots(false);
+
+      if (
+        result.error ||
+        result.statusCode !== 200 ||
+        !result.data?.success ||
+        !Array.isArray(result.data.available_slots)
+      ) {
+        throw new Error(
+          extractApiErrorMessage(
+            result.error,
+            "Nao foi possivel carregar os horarios disponiveis para esta data.",
+          ),
+        );
+      }
+
+      return result.data.available_slots.filter(
+        (slot) =>
+          typeof slot.start_time === "string" && slot.start_time.trim().length > 0,
+      );
+    },
+    staleTime: 30_000,
+  });
+
+  React.useEffect(() => {
+    if (!availableSlotsQuery.isError) {
       return;
     }
 
-    const nextSlots = result.data.available_slots.filter(
-      (slot) => typeof slot.start_time === "string" && slot.start_time.trim().length > 0,
-    );
-    setAvailableSlots(nextSlots);
+    const errorMessage =
+      availableSlotsQuery.error instanceof Error
+        ? availableSlotsQuery.error.message
+        : "Nao foi possivel carregar os horarios disponiveis para esta data.";
+    toast.error(errorMessage);
+  }, [availableSlotsQuery.error, availableSlotsQuery.errorUpdatedAt, availableSlotsQuery.isError]);
 
+  React.useEffect(() => {
+    setSelectedTime(null);
+  }, [selectedDateApi, resolvedDaysEndpoint]);
+
+  React.useEffect(() => {
+    const nextSlots = availableSlotsQuery.data ?? [];
     setSelectedTime((previous) => {
       const hasCurrentTime = nextSlots.some((slot) => slot.start_time === previous);
       if (hasCurrentTime) {
@@ -168,13 +179,10 @@ export default function Calendar20({
 
       return nextSlots[0]?.start_time ?? null;
     });
+  }, [availableSlotsQuery.data]);
 
-    setIsLoadingSlots(false);
-  }, [resolvedDaysEndpoint, selectedDateApi]);
-
-  React.useEffect(() => {
-    void loadAvailableSlots();
-  }, [loadAvailableSlots]);
+  const availableSlots = availableSlotsQuery.data ?? [];
+  const isLoadingSlots = availableSlotsQuery.isPending;
 
   const handleCreateScheduling = React.useCallback(async () => {
     if (!date || !selectedTime || !resolvedCreateEndpoint) {
@@ -213,14 +221,14 @@ export default function Calendar20({
 
     toast.success(successMessage);
     setIsSubmitting(false);
-    await loadAvailableSlots();
+    await availableSlotsQuery.refetch();
     onCreateSuccess?.();
     return true;
   }, [
+    availableSlotsQuery,
     buildCreatePayload,
     createErrorMessage,
     date,
-    loadAvailableSlots,
     onCreateSuccess,
     resolvedCreateEndpoint,
     selectedTime,

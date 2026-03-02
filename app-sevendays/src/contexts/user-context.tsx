@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { sevendaysapi } from "@/lib/sevendaysapi";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -64,6 +65,7 @@ type AccessDecision = {
 
 const USER_REFRESH_INTERVAL_MS = 12_000;
 const PUBLIC_ROUTES = new Set(["/", "/login", "/cadastro", "/signup"]);
+const CURRENT_USER_QUERY_KEY = ["current-user"] as const;
 
 const UserContext = createContext<UserContextValue | undefined>(undefined);
 
@@ -200,100 +202,63 @@ function resolveAccessDecision({
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
 
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  const currentUserRef = useRef<CurrentUser | null>(null);
-  const isMountedRef = useRef(false);
-  const hasLoadedOnceRef = useRef(false);
-  const isFetchingRef = useRef(false);
   const isLoggingOutRef = useRef(false);
-
-  useEffect(() => {
-    currentUserRef.current = currentUser;
-  }, [currentUser]);
 
   useEffect(() => {
     isLoggingOutRef.current = isLoggingOut;
   }, [isLoggingOut]);
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  const fetchCurrentUser = useCallback(async () => {
+    const result = await sevendaysapi.get<CurrentUserResponse>("/user", {
+      withCredentials: true,
+    });
+
+    if (result.statusCode === 401 || result.statusCode === 403) {
+      return null;
+    }
+
+    if (result.error || result.statusCode !== 200 || !result.data?.user) {
+      return (
+        queryClient.getQueryData<CurrentUser | null>(CURRENT_USER_QUERY_KEY) ?? null
+      );
+    }
+
+    return result.data.user;
+  }, [queryClient]);
+
+  const currentUserQuery = useQuery({
+    queryKey: CURRENT_USER_QUERY_KEY,
+    queryFn: fetchCurrentUser,
+    staleTime: USER_REFRESH_INTERVAL_MS,
+    refetchInterval: USER_REFRESH_INTERVAL_MS,
+    refetchOnWindowFocus: true,
+  });
 
   const refreshCurrentUser = useCallback(
-    async ({ silent = true }: RefreshCurrentUserOptions = {}) => {
-      if (isFetchingRef.current) {
-        return currentUserRef.current;
+    async (options: RefreshCurrentUserOptions = {}) => {
+      if (!options.silent) {
+        await queryClient.invalidateQueries({
+          queryKey: CURRENT_USER_QUERY_KEY,
+        });
       }
 
-      if (!silent || !hasLoadedOnceRef.current) {
-        setIsLoadingUser(true);
-      }
-
-      isFetchingRef.current = true;
-      const result = await sevendaysapi.get<CurrentUserResponse>("/user", {
-        withCredentials: true,
+      const refreshedUser = await queryClient.fetchQuery({
+        queryKey: CURRENT_USER_QUERY_KEY,
+        queryFn: fetchCurrentUser,
+        staleTime: 0,
       });
-      isFetchingRef.current = false;
 
-      if (!isMountedRef.current) {
-        return currentUserRef.current;
-      }
-
-      hasLoadedOnceRef.current = true;
-
-      if (result.statusCode === 401 || result.statusCode === 403) {
-        setCurrentUser(null);
-        setIsLoadingUser(false);
-        return null;
-      }
-
-      if (result.error || result.statusCode !== 200 || !result.data?.user) {
-        setIsLoadingUser(false);
-        return currentUserRef.current;
-      }
-
-      setCurrentUser(result.data.user);
-      setIsLoadingUser(false);
-      return result.data.user;
+      return refreshedUser;
     },
-    [],
+    [fetchCurrentUser, queryClient],
   );
 
   useEffect(() => {
     void refreshCurrentUser({ silent: true });
   }, [pathname, refreshCurrentUser]);
-
-  useEffect(() => {
-    const handleWindowFocus = () => {
-      void refreshCurrentUser({ silent: true });
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void refreshCurrentUser({ silent: true });
-      }
-    };
-
-    window.addEventListener("focus", handleWindowFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    const intervalId = window.setInterval(() => {
-      void refreshCurrentUser({ silent: true });
-    }, USER_REFRESH_INTERVAL_MS);
-
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", handleWindowFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [refreshCurrentUser]);
 
   const logout = useCallback(async () => {
     if (isLoggingOutRef.current) {
@@ -313,23 +278,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
-    setCurrentUser(null);
-    setIsLoadingUser(false);
+    queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);
     setIsLoggingOut(false);
     return true;
-  }, []);
+  }, [queryClient]);
 
+  const currentUser = currentUserQuery.data ?? null;
   const value = useMemo<UserContextValue>(
     () => ({
       currentUser,
-      isLoadingUser,
+      isLoadingUser: currentUserQuery.isPending,
       isLoggingOut,
       isAuthenticated: Boolean(currentUser),
       isOwner: currentUser?.status === "owner",
       refreshCurrentUser,
       logout,
     }),
-    [currentUser, isLoadingUser, isLoggingOut, refreshCurrentUser, logout],
+    [currentUser, currentUserQuery.isPending, isLoggingOut, refreshCurrentUser, logout],
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
@@ -355,9 +320,7 @@ export function UserAccessGuard({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (
-      normalizePathname(pathname) === normalizePathname(decision.redirectTo)
-    ) {
+    if (normalizePathname(pathname) === normalizePathname(decision.redirectTo)) {
       return;
     }
 

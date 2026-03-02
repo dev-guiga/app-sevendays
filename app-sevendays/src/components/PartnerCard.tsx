@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import AvatarProfile from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,22 +105,13 @@ export default function PartnersCard() {
   const params = useParams<{ user?: string | string[] }>();
   const userSlug = Array.isArray(params?.user) ? params.user[0] : params?.user;
 
-  const [diaries, setDiaries] = useState<DiaryListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [hasPrev, setHasPrev] = useState(false);
-  const [hasNext, setHasNext] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [appliedSearchText, setAppliedSearchText] = useState("");
 
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadDiaries() {
-      setIsLoading(true);
-
+  const diariesQuery = useQuery({
+    queryKey: ["diaries", currentPage, PER_PAGE, appliedSearchText],
+    queryFn: async () => {
       const result = await sevendaysapi.get<DiaryListResponse>("/diaries", {
         withCredentials: true,
         params: {
@@ -129,46 +121,53 @@ export default function PartnersCard() {
         },
       });
 
-      if (ignore) {
-        return;
-      }
-
       if (
         result.error ||
         result.statusCode !== 200 ||
         !result.data?.success ||
         !Array.isArray(result.data.diaries)
       ) {
-        toast.error("Nao foi possivel carregar as agendas.");
-        setDiaries([]);
-        setTotalPages(1);
-        setTotalCount(0);
-        setHasPrev(false);
-        setHasNext(false);
-        setIsLoading(false);
-        return;
+        throw new Error("Nao foi possivel carregar as agendas.");
       }
 
       const pagination = result.data.pagination;
-      const serverPage = Math.max(1, Number(pagination?.page) || currentPage);
+      return {
+        diaries: result.data.diaries,
+        page: Math.max(1, Number(pagination?.page) || currentPage),
+        totalPages: Math.max(1, Number(pagination?.total_pages) || 1),
+        totalCount: Math.max(0, Number(pagination?.total_count) || 0),
+        hasPrev: Boolean(pagination?.has_prev),
+        hasNext: Boolean(pagination?.has_next),
+      };
+    },
+    placeholderData: (previous) => previous,
+    staleTime: 30_000,
+  });
 
-      setDiaries(result.data.diaries);
-      setTotalPages(Math.max(1, Number(pagination?.total_pages) || 1));
-      setTotalCount(Math.max(0, Number(pagination?.total_count) || 0));
-      setHasPrev(Boolean(pagination?.has_prev));
-      setHasNext(Boolean(pagination?.has_next));
-      if (serverPage !== currentPage) {
-        setCurrentPage(serverPage);
-      }
-      setIsLoading(false);
+  useEffect(() => {
+    if (!diariesQuery.isError) {
+      return;
     }
 
-    void loadDiaries();
+    toast.error("Nao foi possivel carregar as agendas.");
+  }, [diariesQuery.isError, diariesQuery.errorUpdatedAt]);
 
-    return () => {
-      ignore = true;
-    };
-  }, [appliedSearchText, currentPage]);
+  useEffect(() => {
+    if (!diariesQuery.data) {
+      return;
+    }
+
+    if (diariesQuery.data.page !== currentPage) {
+      setCurrentPage(diariesQuery.data.page);
+    }
+  }, [currentPage, diariesQuery.data]);
+
+  const diaries = diariesQuery.data?.diaries ?? [];
+  const totalPages = diariesQuery.data?.totalPages ?? 1;
+  const totalCount = diariesQuery.data?.totalCount ?? 0;
+  const hasPrev = diariesQuery.data?.hasPrev ?? false;
+  const hasNext = diariesQuery.data?.hasNext ?? false;
+  const isLoading = diariesQuery.isPending;
 
   const paginationItems = useMemo(
     () => buildPaginationItems(currentPage, totalPages),
@@ -277,8 +276,8 @@ export default function PartnersCard() {
                     <CardFooter className="min-h-[100px] flex flex-col gap-2 items-start justify-start">
                       <CardDescription className="flex flex-row gap-2 items-start justify-start">
                         <Info size={20} className="text-primary mt-0.5 shrink-0" />
-                        <span className="text-sm font-light text-muted-foreground">
-                          {diary.description || "Sem descricao para esta agenda."}
+                        <span className="max-w-[300px] text-sm font-light text-muted-foreground">
+                          {diary.professional_description || "Sem descricao profissional informada."}
                         </span>
                       </CardDescription>
                     </CardFooter>
