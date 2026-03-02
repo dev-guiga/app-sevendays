@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { DatePickerSimple } from "@/components/DatePickerSimple";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -110,6 +111,8 @@ type SchedulingRulePayload = {
   end_date?: string;
 };
 
+type SettingsTab = "diary" | "scheduling";
+
 const DEFAULT_START_TIME = "09:00";
 const DEFAULT_END_TIME = "19:00";
 const DEFAULT_SESSION_DURATION = "60";
@@ -149,6 +152,35 @@ function normalizeDateValue(value?: string | null) {
   }
 
   return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
+function parseDateInputValue(value: string) {
+  if (!value) {
+    return undefined;
+  }
+
+  const [year, month, day] = value.split("-").map((item) => Number(item));
+  if (![year, month, day].every(Number.isInteger)) {
+    return undefined;
+  }
+
+  const parsedDate = new Date(year, month - 1, day);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return undefined;
+  }
+
+  return parsedDate;
+}
+
+function formatDateInputValue(value: Date | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function normalizeWeekDays(value?: Array<number | string> | null) {
@@ -264,24 +296,12 @@ function buildSchedulingRulePayload({
   return payload;
 }
 
-function validateForm({
+function validateDiaryForm({
   diaryTitle,
   diaryDescription,
-  startTime,
-  endTime,
-  sessionDuration,
-  selectedWeekDays,
-  startDate,
-  endDate,
 }: {
   diaryTitle: string;
   diaryDescription: string;
-  startTime: string;
-  endTime: string;
-  sessionDuration: string;
-  selectedWeekDays: number[];
-  startDate: string;
-  endDate: string;
 }) {
   if (!diaryTitle.trim()) {
     return "Informe o título da agenda.";
@@ -291,6 +311,24 @@ function validateForm({
     return "A descrição da agenda precisa ter pelo menos 10 caracteres.";
   }
 
+  return null;
+}
+
+function validateSchedulingForm({
+  startTime,
+  endTime,
+  sessionDuration,
+  selectedWeekDays,
+  startDate,
+  endDate,
+}: {
+  startTime: string;
+  endTime: string;
+  sessionDuration: string;
+  selectedWeekDays: number[];
+  startDate: string;
+  endDate: string;
+}) {
   if (!startTime || !endTime) {
     return "Informe horário de início e fim.";
   }
@@ -324,9 +362,11 @@ export default function AdminSettingsPage() {
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSavingDiary, setIsSavingDiary] = useState(false);
+  const [isSavingScheduling, setIsSavingScheduling] = useState(false);
   const [hasDiary, setHasDiary] = useState(false);
   const [hasSchedulingRule, setHasSchedulingRule] = useState(false);
+  const [activeTab, setActiveTab] = useState<SettingsTab>("diary");
 
   const [diaryTitle, setDiaryTitle] = useState("");
   const [diaryDescription, setDiaryDescription] = useState("");
@@ -479,18 +519,12 @@ export default function AdminSettingsPage() {
     });
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmitDiary = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const validationMessage = validateForm({
+    const validationMessage = validateDiaryForm({
       diaryTitle,
       diaryDescription,
-      startTime,
-      endTime,
-      sessionDuration,
-      selectedWeekDays,
-      startDate,
-      endDate,
     });
 
     if (validationMessage) {
@@ -498,18 +532,18 @@ export default function AdminSettingsPage() {
       return;
     }
 
-    const schedulingRulePayload = buildSchedulingRulePayload({
-      startTime,
-      endTime,
-      sessionDuration,
-      selectedWeekDays,
-      startDate,
-      endDate,
-    });
-
-    setIsSaving(true);
+    setIsSavingDiary(true);
 
     if (!hasDiary) {
+      const schedulingRulePayload = buildSchedulingRulePayload({
+        startTime,
+        endTime,
+        sessionDuration,
+        selectedWeekDays,
+        startDate,
+        endDate,
+      });
+
       const createDiaryPayload: CreateDiaryRequest = {
         diary: {
           title: diaryTitle.trim(),
@@ -534,7 +568,7 @@ export default function AdminSettingsPage() {
             "Não foi possível criar a agenda com o funcionamento informado.",
           ),
         );
-        setIsSaving(false);
+        setIsSavingDiary(false);
         return;
       }
 
@@ -553,8 +587,8 @@ export default function AdminSettingsPage() {
         setHasSchedulingRule(true);
       }
 
-      toast.success("Agenda e funcionamento criados com sucesso.");
-      setIsSaving(false);
+      toast.success("Dados da agenda criados com sucesso.");
+      setIsSavingDiary(false);
       return;
     }
 
@@ -578,9 +612,47 @@ export default function AdminSettingsPage() {
       toast.error(
         extractApiErrorMessage(updateDiaryResult.error, "Não foi possível atualizar a agenda."),
       );
-      setIsSaving(false);
+      setIsSavingDiary(false);
       return;
     }
+
+    setIsSavingDiary(false);
+    toast.success("Dados da agenda salvos com sucesso.");
+  };
+
+  const handleSubmitScheduling = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!hasDiary) {
+      toast.error("Crie os dados da agenda antes de definir o funcionamento.");
+      setActiveTab("diary");
+      return;
+    }
+
+    const validationMessage = validateSchedulingForm({
+      startTime,
+      endTime,
+      sessionDuration,
+      selectedWeekDays,
+      startDate,
+      endDate,
+    });
+
+    if (validationMessage) {
+      toast.error(validationMessage);
+      return;
+    }
+
+    const schedulingRulePayload = buildSchedulingRulePayload({
+      startTime,
+      endTime,
+      sessionDuration,
+      selectedWeekDays,
+      startDate,
+      endDate,
+    });
+
+    setIsSavingScheduling(true);
 
     const schedulingRuleRequestPayload: UpdateSchedulingRuleRequest = {
       scheduling_rules: schedulingRulePayload,
@@ -613,7 +685,7 @@ export default function AdminSettingsPage() {
           "Não foi possível salvar o funcionamento da agenda.",
         ),
       );
-      setIsSaving(false);
+      setIsSavingScheduling(false);
       return;
     }
 
@@ -627,7 +699,7 @@ export default function AdminSettingsPage() {
     setStartDate(parsedRule.startDate);
     setEndDate(parsedRule.endDate);
     setHasSchedulingRule(true);
-    setIsSaving(false);
+    setIsSavingScheduling(false);
     toast.success("Funcionamento da agenda salvo com sucesso.");
   };
 
@@ -669,6 +741,14 @@ export default function AdminSettingsPage() {
     );
   }
 
+  const tabButtonClass = (tab: SettingsTab) =>
+    [
+      "inline-flex items-end border-b-2 border-transparent bg-transparent px-0 pb-px text-sm leading-none font-medium [font-family:var(--rationale-font)] transition-colors disabled:opacity-50",
+      activeTab === tab
+        ? "border-b-primary text-primary"
+        : "text-muted-foreground hover:text-foreground",
+    ].join(" ");
+
   return (
     <div className="w-full max-w-7xl flex flex-col items-start justify-start gap-8 sm:mx-auto mx-0 px-4 py-10 pb-16">
       <div className="w-full flex flex-col">
@@ -676,153 +756,208 @@ export default function AdminSettingsPage() {
         <p className="text-sm text-muted-foreground">{pageTitle}</p>
       </div>
 
-      <Separator className="w-full h-[1px] bg-primary/40" />
-
-      <form className="w-full flex flex-col gap-6" onSubmit={handleSubmit}>
-        <Card className="w-full">
-          <CardHeader>
-            <CardTitle>Dados da agenda</CardTitle>
-            <CardDescription>
-              Esses dados identificam sua agenda pública para os usuários.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="diary-title">Título da agenda</Label>
-              <Input
-                id="diary-title"
-                type="text"
-                value={diaryTitle}
-                onChange={(event) => setDiaryTitle(event.target.value)}
-                placeholder="Ex.: Consultório de Enfermagem"
-                disabled={isSaving}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="diary-description">Descrição da agenda</Label>
-              <Textarea
-                id="diary-description"
-                value={diaryDescription}
-                onChange={(event) => setDiaryDescription(event.target.value)}
-                placeholder="Descreva os tipos de atendimento realizados."
-                className="min-h-28"
-                disabled={isSaving}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="w-full">
-          <CardHeader>
-            <CardTitle>Funcionamento</CardTitle>
-            <CardDescription>
-              Defina janela de atendimento, duração das sessões e dias permitidos.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="start-time">Horário inicial</Label>
-                <Input
-                  id="start-time"
-                  type="time"
-                  value={startTime}
-                  onChange={(event) => setStartTime(event.target.value)}
-                  disabled={isSaving}
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="end-time">Horário final</Label>
-                <Input
-                  id="end-time"
-                  type="time"
-                  value={endTime}
-                  onChange={(event) => setEndTime(event.target.value)}
-                  disabled={isSaving}
-                />
-              </div>
-            </div>
-
-            <div className="w-full sm:max-w-xs flex flex-col gap-2">
-              <Label htmlFor="session-duration">Duração da sessão (minutos)</Label>
-              <Input
-                id="session-duration"
-                type="number"
-                min={15}
-                step={15}
-                value={sessionDuration}
-                onChange={(event) => setSessionDuration(event.target.value)}
-                disabled={isSaving}
-              />
-              <p className="text-xs text-muted-foreground">
-                Use múltiplos de 15 minutos.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <Label>Dias de funcionamento</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {WEEK_DAY_OPTIONS.map((day) => (
-                  <label
-                    key={day.value}
-                    className="inline-flex items-center gap-2 text-sm text-muted-foreground"
-                  >
-                    <Checkbox
-                      checked={selectedWeekDays.includes(day.value)}
-                      onCheckedChange={(checked) =>
-                        handleToggleWeekDay(day.value, checked === true)
-                      }
-                      disabled={isSaving}
-                    />
-                    <span>{day.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="start-date">Data inicial (opcional)</Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(event) => setStartDate(event.target.value)}
-                  disabled={isSaving}
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="end-date">Data final (opcional)</Label>
-                <Input
-                  id="end-date"
-                  type="date"
-                  value={endDate}
-                  onChange={(event) => setEndDate(event.target.value)}
-                  disabled={isSaving}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="w-full flex items-center justify-end">
-          <Button type="submit" disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <CircleNotch size={14} className="animate-spin" />
-                Salvando...
-              </>
-            ) : hasDiary && hasSchedulingRule ? (
-              "Salvar alterações"
-            ) : (
-              "Criar funcionamento"
-            )}
-          </Button>
+      <div className="w-full relative pt-4">
+        <Separator className="w-full h-[1px] bg-primary/40" />
+        <div className="absolute left-0 top-4 -translate-y-1/2 bg-background pr-4 flex items-end gap-6">
+          <button
+            type="button"
+            className={tabButtonClass("diary")}
+            onClick={() => setActiveTab("diary")}
+            disabled={isSavingDiary || isSavingScheduling}
+          >
+            Dados da agenda
+          </button>
+          <button
+            type="button"
+            className={tabButtonClass("scheduling")}
+            onClick={() => setActiveTab("scheduling")}
+            disabled={isSavingDiary || isSavingScheduling}
+          >
+            Funcionamento
+          </button>
         </div>
-      </form>
+      </div>
+
+      {activeTab === "diary" ? (
+        <form className="w-full flex flex-col gap-6" onSubmit={handleSubmitDiary}>
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle>Editar dados da agenda</CardTitle>
+              <CardDescription>
+                Esses dados identificam sua agenda pública para os usuários.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="diary-title">Título da agenda</Label>
+                <Input
+                  id="diary-title"
+                  type="text"
+                  value={diaryTitle}
+                  onChange={(event) => setDiaryTitle(event.target.value)}
+                  placeholder="Ex.: Consultório de Enfermagem"
+                  disabled={isSavingDiary}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="diary-description">Descrição da agenda</Label>
+                <Textarea
+                  id="diary-description"
+                  value={diaryDescription}
+                  onChange={(event) => setDiaryDescription(event.target.value)}
+                  placeholder="Descreva os tipos de atendimento realizados."
+                  className="min-h-28"
+                  disabled={isSavingDiary}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="w-full flex items-center justify-end">
+            <Button type="submit" disabled={isSavingDiary}>
+              {isSavingDiary ? (
+                <>
+                  <CircleNotch size={14} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : hasDiary ? (
+                "Salvar dados da agenda"
+              ) : (
+                "Criar dados da agenda"
+              )}
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <form className="w-full flex flex-col gap-6" onSubmit={handleSubmitScheduling}>
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle>Editar funcionamento</CardTitle>
+              <CardDescription>
+                Defina janela de atendimento, duração das sessões e dias permitidos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-5">
+              {!hasDiary ? (
+                <p className="text-sm text-muted-foreground">
+                  Crie os dados da agenda na aba anterior para liberar esta configuração.
+                </p>
+              ) : null}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="start-time">Horário inicial</Label>
+                  <Input
+                    id="start-time"
+                    type="time"
+                    value={startTime}
+                    onChange={(event) => setStartTime(event.target.value)}
+                    disabled={isSavingScheduling || !hasDiary}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="end-time">Horário final</Label>
+                  <Input
+                    id="end-time"
+                    type="time"
+                    value={endTime}
+                    onChange={(event) => setEndTime(event.target.value)}
+                    disabled={isSavingScheduling || !hasDiary}
+                  />
+                </div>
+              </div>
+
+              <div className="w-full sm:max-w-xs flex flex-col gap-2">
+                <Label htmlFor="session-duration">Duração da sessão (minutos)</Label>
+                <Input
+                  id="session-duration"
+                  type="number"
+                  min={15}
+                  step={15}
+                  value={sessionDuration}
+                  onChange={(event) => setSessionDuration(event.target.value)}
+                  disabled={isSavingScheduling || !hasDiary}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use múltiplos de 15 minutos.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <Label>Dias de funcionamento</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {WEEK_DAY_OPTIONS.map((day) => (
+                    <label
+                      key={day.value}
+                      className="inline-flex items-center gap-2 text-sm text-muted-foreground"
+                    >
+                      <Checkbox
+                        checked={selectedWeekDays.includes(day.value)}
+                        onCheckedChange={(checked) =>
+                          handleToggleWeekDay(day.value, checked === true)
+                        }
+                        disabled={isSavingScheduling || !hasDiary}
+                      />
+                      <span>{day.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="start-date">Data inicial (opcional)</Label>
+                  <DatePickerSimple
+                    id="start-date"
+                    label="Data inicial (opcional)"
+                    labelClassName="sr-only"
+                    placeholder="Selecione a data inicial"
+                    className="w-full"
+                    value={parseDateInputValue(startDate)}
+                    onChange={(nextDate) =>
+                      setStartDate(formatDateInputValue(nextDate))
+                    }
+                    disabled={isSavingScheduling || !hasDiary}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="end-date">Data final (opcional)</Label>
+                  <DatePickerSimple
+                    id="end-date"
+                    label="Data final (opcional)"
+                    labelClassName="sr-only"
+                    placeholder="Selecione a data final"
+                    className="w-full"
+                    value={parseDateInputValue(endDate)}
+                    onChange={(nextDate) =>
+                      setEndDate(formatDateInputValue(nextDate))
+                    }
+                    disabled={isSavingScheduling || !hasDiary}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="w-full flex items-center justify-end">
+            <Button type="submit" disabled={isSavingScheduling || !hasDiary}>
+              {isSavingScheduling ? (
+                <>
+                  <CircleNotch size={14} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : hasSchedulingRule ? (
+                "Salvar funcionamento"
+              ) : (
+                "Criar funcionamento"
+              )}
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

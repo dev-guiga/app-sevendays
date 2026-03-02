@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { DatePickerWithRange } from "@/components/DatePickerWithRange";
+import { DatePickerSimple } from "@/components/DatePickerSimple";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,7 +27,6 @@ import { sevendaysapi } from "@/lib/sevendaysapi";
 import { CaretDown, MagnifyingGlass } from "@phosphor-icons/react";
 import { addDays, format } from "date-fns";
 import { toast } from "sonner";
-import { type DateRange } from "react-day-picker";
 
 type OwnerSchedulingStatus = "available" | "marked" | "cancelled";
 type SortDirection = "asc" | "desc";
@@ -61,13 +60,12 @@ const SKELETON_ROWS = 20;
 const DEFAULT_SORT_FIELD: SortField = "date";
 const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
 
-function buildDefaultDateRange(): DateRange {
-  const today = new Date();
+function buildDefaultStartDate() {
+  return new Date();
+}
 
-  return {
-    from: today,
-    to: addDays(today, 30),
-  };
+function buildDefaultEndDate() {
+  return addDays(new Date(), 30);
 }
 
 function formatDate(value?: string) {
@@ -172,7 +170,8 @@ export function TableClients() {
   const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION);
   const [searchText, setSearchText] = useState("");
   const [appliedSearchText, setAppliedSearchText] = useState("");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(buildDefaultDateRange);
+  const [startDateFilter, setStartDateFilter] = useState<Date>(buildDefaultStartDate);
+  const [endDateFilter, setEndDateFilter] = useState<Date>(buildDefaultEndDate);
 
   useEffect(() => {
     let ignore = false;
@@ -188,8 +187,8 @@ export function TableClients() {
             page: currentPage,
             per_page: PER_PAGE,
             ...(appliedSearchText ? { query: appliedSearchText } : {}),
-            ...(dateRange?.from ? { date_from: format(dateRange.from, "yyyy-MM-dd") } : {}),
-            ...(dateRange?.to ? { date_to: format(dateRange.to, "yyyy-MM-dd") } : {}),
+            ...(startDateFilter ? { date_from: format(startDateFilter, "yyyy-MM-dd") } : {}),
+            ...(endDateFilter ? { date_to: format(endDateFilter, "yyyy-MM-dd") } : {}),
           },
         },
       );
@@ -233,7 +232,7 @@ export function TableClients() {
     return () => {
       ignore = true;
     };
-  }, [appliedSearchText, currentPage, dateRange]);
+  }, [appliedSearchText, currentPage, endDateFilter, startDateFilter]);
 
   const sortedSchedulings = useMemo(() => {
     const items = [ ...schedulings ];
@@ -329,36 +328,62 @@ export function TableClients() {
   return (
     <div className="w-full flex flex-col gap-4">
       <form
-        className="w-full flex items-center gap-2"
+        className="w-full flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
         onSubmit={(event) => {
           event.preventDefault();
           setAppliedSearchText(searchText.trim());
           setCurrentPage(1);
         }}
       >
-        <Input
-          placeholder="Buscar por nome ou e-mail"
-          value={searchText}
-          onChange={(event) => setSearchText(event.target.value)}
-          className="max-w-md"
-        />
-        <Button type="submit" className="px-3">
-          <MagnifyingGlass size={16} />
-        </Button>
-        <DatePickerWithRange
-          className="w-auto"
-          value={dateRange}
-          onChange={(nextDateRange) => {
-            if (!nextDateRange) {
-              setDateRange(buildDefaultDateRange());
-              setCurrentPage(1);
-              return;
-            }
+        <div className="flex w-full items-center gap-2 sm:max-w-md">
+          <Input
+            placeholder="Buscar por nome ou e-mail"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            className="w-full"
+          />
+          <Button type="submit" className="h-10 w-10 shrink-0 p-0" aria-label="Pesquisar">
+            <MagnifyingGlass size={16} />
+          </Button>
+        </div>
+        <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2">
+          <DatePickerSimple
+            id="table-filter-start-date"
+            label="Data inicial"
+            labelClassName="sr-only"
+            placeholder="Data inicial"
+            className="w-full sm:w-44"
+            value={startDateFilter}
+            onChange={(nextDate) => {
+              if (!nextDate) {
+                setStartDateFilter(buildDefaultStartDate());
+                setCurrentPage(1);
+                return;
+              }
 
-            setDateRange(nextDateRange);
-            setCurrentPage(1);
-          }}
-        />
+              setStartDateFilter(nextDate);
+              setCurrentPage(1);
+            }}
+          />
+          <DatePickerSimple
+            id="table-filter-end-date"
+            label="Data final"
+            labelClassName="sr-only"
+            placeholder="Data final"
+            className="w-full sm:w-44"
+            value={endDateFilter}
+            onChange={(nextDate) => {
+              if (!nextDate) {
+                setEndDateFilter(buildDefaultEndDate());
+                setCurrentPage(1);
+                return;
+              }
+
+              setEndDateFilter(nextDate);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
       </form>
 
       <Table>
