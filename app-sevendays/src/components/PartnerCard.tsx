@@ -28,6 +28,10 @@ type DiaryListItem = {
   id: number;
   title?: string;
   description?: string;
+  professional?: {
+    professional_description?: string;
+    description?: string;
+  };
   user_name?: string;
   user_email?: string;
   address?: string;
@@ -99,6 +103,15 @@ function buildAddressText(diary: DiaryListItem) {
   }
 
   return "Endereco nao informado";
+}
+
+function getProfessionalDescription(diary: DiaryListItem) {
+  return (
+    diary.professional_description?.trim() ||
+    diary.professional?.professional_description?.trim() ||
+    diary.professional?.description?.trim() ||
+    "Sem descricao profissional informada."
+  );
 }
 
 export default function PartnersCard() {
@@ -242,8 +255,12 @@ export default function PartnersCard() {
               const ownerName = diary.user_name?.trim() || diary.title?.trim() || "Agenda";
 
               return (
-                <Link href={href} key={diary.id}>
-                  <Card className="w-full min-h-[290px] flex flex-col gap-2 border-solid border border-border rounded-md py-5 hover:shadow-md transition-all duration-300">
+                <Link
+                  href={href}
+                  key={diary.id}
+                  className="flex w-full justify-center"
+                >
+                  <Card className="w-full max-w-[300px] min-h-[290px] flex flex-col gap-2 border-solid border border-border rounded-md py-5 hover:shadow-md transition-all duration-300">
                     <CardHeader className="flex flex-row items-center justify-center pb-2">
                       <AvatarProfile
                         src="https://github.com/shadcn.png"
@@ -276,8 +293,8 @@ export default function PartnersCard() {
                     <CardFooter className="min-h-[100px] flex flex-col gap-2 items-start justify-start">
                       <CardDescription className="flex flex-row gap-2 items-start justify-start">
                         <Info size={20} className="text-primary mt-0.5 shrink-0" />
-                        <span className="max-w-[300px] text-sm font-light text-muted-foreground">
-                          {diary.professional_description || "Sem descricao profissional informada."}
+                        <span className="w-full text-sm font-light text-muted-foreground">
+                          {getProfessionalDescription(diary)}
                         </span>
                       </CardDescription>
                     </CardFooter>

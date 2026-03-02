@@ -26,6 +26,7 @@ type DiaryProfessional = {
   branch?: string;
   document?: string;
   document_type?: string;
+  professional_description?: string;
   description?: string;
   address?: string;
   city?: string;
@@ -82,7 +83,12 @@ function buildAddressText(diary?: DiaryDetail) {
 
 function getProfessionalFromDiary(diary: DiaryDetail): DiaryProfessional {
   if (diary.professional) {
-    return diary.professional;
+    return {
+      ...diary.professional,
+      professional_description:
+        diary.professional.professional_description ??
+        diary.professional.description,
+    };
   }
 
   return {
@@ -91,7 +97,7 @@ function getProfessionalFromDiary(diary: DiaryDetail): DiaryProfessional {
     branch: diary.professional_branch,
     document: diary.professional_document,
     document_type: diary.professional_document_type,
-    description: diary.professional_description,
+    professional_description: diary.professional_description,
     address: diary.address,
     city: diary.city,
     state: diary.state,
@@ -277,9 +283,9 @@ export default function PortalPage() {
           <h1 className="text-2xl font-bold">{ownerName}</h1>
 
           <div className="w-full max-w-3xl flex flex-col justify-start items-center gap-3">
-            {professional?.description ? (
-              <span className="text-sm text-muted-foreground text-center">
-                {professional.description}
+            {professional?.professional_description ? (
+              <span className="max-w-[300px] text-sm text-muted-foreground text-center">
+                {professional.professional_description}
                 <Separator className="w-full h-[1px] bg-primary/50" />
               </span>
             ) : null}
