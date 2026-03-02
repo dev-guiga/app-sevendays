@@ -2,86 +2,183 @@
 
 import * as React from "react";
 
+import { ConfirmationDateModal } from "@/components/ConfirmationDateModal";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { ConfirmationDateModal } from "./ConfirmationDateModal";
+import { sevendaysapi } from "@/lib/sevendaysapi";
+import { format } from "date-fns";
+import { toast } from "sonner";
 
-const partner = {
-  name: "John Doe",
-  email: "john.doe@example.com",
-  phone: "1234567890",
-  address: "123 Main St, Anytown, USA",
-  city: "Anytown",
-  state: "CA",
-  zip: "12345",
-  country: "USA",
-  partner: true,
-  partner_id: "1234567890",
-  ListDates: [
-    {
-      date: "2025-05-12",
-      time: "09:00",
-      status: "booked",
-    },
-    {
-      date: "2025-05-13",
-      time: "10:00",
-      status: "booked",
-    },
-    {
-      date: "2025-05-14",
-      time: "11:00",
-      status: "available",
-    },
-    {
-      date: "2025-05-15",
-      time: "12:00",
-      status: "available",
-    },
-    {
-      date: "2025-05-16",
-      time: "13:00",
-      status: "available",
-    },
-    {
-      date: "2025-05-17",
-      time: "14:00",
-      status: "booked",
-    },
-    {
-      date: "2025-05-18",
-      time: "15:00",
-      status: "available",
-    },
-    {
-      date: "2025-05-19",
-      time: "16:00",
-      status: "available",
-    },
-    {
-      date: "2025-05-20",
-      time: "17:00",
-      status: "booked",
-    },
-  ],
+type AvailableSlot = {
+  start_time?: string;
+  end_time?: string;
 };
 
-export default function Calendar20() {
+type DiaryDaysResponse = {
+  success?: boolean;
+  date?: string;
+  available_slots?: AvailableSlot[];
+};
+
+type CreateSchedulingResponse = {
+  success?: boolean;
+  id?: number;
+  date?: string;
+  time?: string;
+  status?: string;
+};
+
+type CreateSchedulingPayload = {
+  scheduling: {
+    date: string;
+    time: string;
+    description: string;
+  };
+};
+
+type Calendar20Props = {
+  diaryId: number;
+};
+
+function extractApiErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error;
+  }
+
+  if (error && typeof error === "object") {
+    const candidate = error as {
+      error?: {
+        message?: string;
+      };
+      message?: string;
+    };
+
+    if (typeof candidate.error?.message === "string" && candidate.error.message.trim().length > 0) {
+      return candidate.error.message;
+    }
+
+    if (typeof candidate.message === "string" && candidate.message.trim().length > 0) {
+      return candidate.message;
+    }
+  }
+
+  return fallback;
+}
+
+function formatDateForApi(date: Date) {
+  return format(date, "yyyy-MM-dd");
+}
+
+export default function Calendar20({ diaryId }: Calendar20Props) {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
-  const [selectedTime, setSelectedTime] = React.useState<string | null>(
-    "10:00"
+  const [selectedTime, setSelectedTime] = React.useState<string | null>(null);
+  const [availableSlots, setAvailableSlots] = React.useState<AvailableSlot[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const selectedDateApi = React.useMemo(
+    () => (date ? formatDateForApi(date) : null),
+    [date],
   );
 
-  const modifiers = {
-    weekend: { dayOfWeek: [0, 6] }, // Match weekends'
-    before: new Date(),
-  };
+  const loadAvailableSlots = React.useCallback(async () => {
+    if (!selectedDateApi) {
+      setAvailableSlots([]);
+      setSelectedTime(null);
+      return;
+    }
+
+    setIsLoadingSlots(true);
+
+    const result = await sevendaysapi.get<DiaryDaysResponse>(
+      `/diaries/${diaryId}/days`,
+      {
+        withCredentials: true,
+        params: {
+          date: selectedDateApi,
+        },
+      },
+    );
+
+    if (
+      result.error ||
+      result.statusCode !== 200 ||
+      !result.data?.success ||
+      !Array.isArray(result.data.available_slots)
+    ) {
+      toast.error(
+        extractApiErrorMessage(
+          result.error,
+          "Nao foi possivel carregar os horarios disponiveis para esta data.",
+        ),
+      );
+      setAvailableSlots([]);
+      setSelectedTime(null);
+      setIsLoadingSlots(false);
+      return;
+    }
+
+    const nextSlots = result.data.available_slots.filter(
+      (slot) => typeof slot.start_time === "string" && slot.start_time.trim().length > 0,
+    );
+    setAvailableSlots(nextSlots);
+
+    setSelectedTime((previous) => {
+      const hasCurrentTime = nextSlots.some((slot) => slot.start_time === previous);
+      if (hasCurrentTime) {
+        return previous;
+      }
+
+      return nextSlots[0]?.start_time ?? null;
+    });
+
+    setIsLoadingSlots(false);
+  }, [diaryId, selectedDateApi]);
+
+  React.useEffect(() => {
+    void loadAvailableSlots();
+  }, [loadAvailableSlots]);
+
+  const handleCreateScheduling = React.useCallback(async () => {
+    if (!date || !selectedTime) {
+      return false;
+    }
+
+    setIsSubmitting(true);
+
+    const payload: CreateSchedulingPayload = {
+      scheduling: {
+        date: formatDateForApi(date),
+        time: selectedTime,
+        description: "Agendamento criado via portal do usuario",
+      },
+    };
+
+    const result = await sevendaysapi.post<CreateSchedulingResponse, CreateSchedulingPayload>(
+      `/diaries/${diaryId}/schedulings`,
+      payload,
+      { withCredentials: true },
+    );
+
+    if (result.error || result.statusCode !== 201 || !result.data?.success) {
+      toast.error(
+        extractApiErrorMessage(result.error, "Nao foi possivel confirmar o agendamento."),
+      );
+      setIsSubmitting(false);
+      return false;
+    }
+
+    toast.success("Agendamento confirmado com sucesso.");
+    setIsSubmitting(false);
+    await loadAvailableSlots();
+    return true;
+  }, [date, diaryId, loadAvailableSlots, selectedTime]);
 
   return (
-    <Card className="gap-0 p-0">
-      <CardContent className="relative p-0 md:pr-48">
-        <div className="p-6">
+    <Card className="w-full gap-0 p-0 md:w-fit">
+      <CardContent className="p-0 md:flex md:w-fit md:items-stretch">
+        <div className="p-6 md:w-fit md:shrink-0">
           <Calendar
             mode="single"
             selected={date}
@@ -91,63 +188,81 @@ export default function Calendar20() {
               {
                 before: new Date(),
               },
-              {
-                dayOfWeek: [0, 6],
-              },
             ]}
-            modifiers={modifiers}
+            modifiers={{
+              before: new Date(),
+            }}
             modifiersClassNames={{
-              weekend: "[&>button]:line-through opacity-100 cursor-not-allowed",
               before: "[&>button]:line-through opacity-100 cursor-not-allowed",
             }}
-            className="bg-transparent p-0 [--cell-size:--spacing(10)] md:[--cell-size:--spacing(12)]"
+            className="w-fit bg-transparent p-0 [--cell-size:--spacing(10)] md:[--cell-size:--spacing(12)]"
+            classNames={{
+              months: "flex w-fit gap-4 flex-col md:flex-row relative",
+              month: "flex flex-col w-fit gap-4",
+            }}
             formatters={{
-              formatWeekdayName: (date) => {
-                return date.toLocaleString("pt-BR", { weekday: "short" });
-              },
+              formatWeekdayName: (nextDate) =>
+                nextDate.toLocaleString("pt-BR", { weekday: "short" }),
             }}
           />
         </div>
+
         <div
-          className="no-scrollbar inset-y-0 right-0 flex max-h-72 w-full scroll-pb-6 flex-col gap-4 overflow-y-auto border-t p-6 md:absolute md:max-h-none md:w-48 md:border-t-0 md:border-l"
+          className="no-scrollbar flex max-h-72 w-full scroll-pb-6 flex-col gap-4 overflow-y-auto border-t p-6 md:max-h-none md:w-56 md:border-t-0 md:border-l"
           style={{ scrollbarWidth: "thin" }}
         >
-          <div className="grid gap-2">
-            {partner.ListDates.map((time, index) => (
-              <Button
-                key={index}
-                variant={selectedTime === time.time ? "default" : "outline"}
-                disabled={time.status === "booked"}
-                onClick={() => setSelectedTime(time.time)}
-                className="w-full shadow-none disabled:opacity-70"
-              >
-                {time.time}
-              </Button>
-            ))}
-          </div>
+          {isLoadingSlots ? (
+            <p className="text-sm text-muted-foreground">Carregando horarios...</p>
+          ) : availableSlots.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Sem horarios disponiveis para a data selecionada.
+            </p>
+          ) : (
+            <div className="grid gap-2">
+              {availableSlots.map((slot) => {
+                const slotTime = slot.start_time ?? "";
+                return (
+                  <Button
+                    key={slotTime}
+                    variant={selectedTime === slotTime ? "default" : "outline"}
+                    onClick={() => setSelectedTime(slotTime)}
+                    className="w-full shadow-none"
+                  >
+                    {slotTime}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </CardContent>
-      <CardFooter className="flex flex-col gap-4 border-t px-6 !py-5 md:flex-row">
+
+      <CardFooter className="flex flex-col gap-4 border-t px-6 !py-5 md:flex-row md:items-center md:justify-between">
         <div className="text-sm">
           {date && selectedTime ? (
             <>
-              Your meeting is booked for{" "}
+              Seu agendamento sera para{" "}
               <span className="font-medium">
-                {" "}
-                {date?.toLocaleDateString("pt-BR", {
+                {date.toLocaleDateString("pt-BR", {
                   weekday: "long",
                   day: "numeric",
                   month: "long",
-                })}{" "}
-              </span>
-              ás <span className="font-medium">{selectedTime}</span>.
+                })}
+              </span>{" "}
+              as <span className="font-medium">{selectedTime}</span>.
             </>
           ) : (
-            <>Selecione uma data e hora para seu agendamento.</>
+            <>Selecione uma data e horario disponiveis.</>
           )}
         </div>
 
-        <ConfirmationDateModal date={date} selectedTime={selectedTime} />
+        <ConfirmationDateModal
+          date={date}
+          selectedTime={selectedTime}
+          disabled={!date || !selectedTime || isLoadingSlots}
+          isSubmitting={isSubmitting}
+          onConfirm={handleCreateScheduling}
+        />
       </CardFooter>
     </Card>
   );

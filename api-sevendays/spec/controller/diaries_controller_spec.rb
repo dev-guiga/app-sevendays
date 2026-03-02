@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe DiariesController, type: :controller do
   render_views
-    let(:user) { create_user! }
+  let(:user) { create_user! }
 
   describe "routing" do
     it "routes GET /api/diaries to diaries#index" do
@@ -28,6 +28,28 @@ RSpec.describe DiariesController, type: :controller do
         expect(body["diaries"].size).to eq(1)
         expect(body["diaries"].first["title"]).to eq(diary.title)
         expect(body["diaries"].first["description"]).to eq(diary.description)
+        expect(body.dig("pagination", "per_page")).to eq(12)
+        expect(body.dig("pagination", "total_count")).to eq(1)
+        expect(body.dig("pagination", "total_pages")).to eq(1)
+        expect(body.dig("pagination", "page")).to eq(1)
+      end
+
+      it "returns paginated diaries with 12 per page" do
+        13.times { create_diary!(user: create_user!) }
+
+        get :index, params: { page: 2 }, format: :json
+
+        expect(response).to have_http_status(:ok)
+
+        body = response.parsed_body
+        expect(body["success"]).to eq(true)
+        expect(body["diaries"].size).to eq(2)
+        expect(body.dig("pagination", "per_page")).to eq(12)
+        expect(body.dig("pagination", "total_count")).to eq(14)
+        expect(body.dig("pagination", "total_pages")).to eq(2)
+        expect(body.dig("pagination", "page")).to eq(2)
+        expect(body.dig("pagination", "has_prev")).to eq(true)
+        expect(body.dig("pagination", "has_next")).to eq(false)
       end
     end
 

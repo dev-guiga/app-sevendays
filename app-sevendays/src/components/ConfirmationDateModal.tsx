@@ -1,3 +1,5 @@
+import { type FormEvent, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,17 +16,40 @@ import { XIcon } from "lucide-react";
 export function ConfirmationDateModal({
   date,
   selectedTime,
+  disabled = false,
+  isSubmitting = false,
+  onConfirm,
 }: {
   date: Date | undefined;
   selectedTime: string | null;
+  disabled?: boolean;
+  isSubmitting?: boolean;
+  onConfirm?: () => Promise<boolean> | boolean;
 }) {
+  const [open, setOpen] = useState(false);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!onConfirm) {
+      return;
+    }
+
+    const result = await onConfirm();
+    if (result) {
+      setOpen(false);
+    }
+  };
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Confirmar Agendamento</Button>
+        <Button variant="outline" disabled={disabled || isSubmitting}>
+          Confirmar Agendamento
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        <form>
+        <form onSubmit={handleSubmit}>
           <DialogHeader className="w-full flex flex-row justify-between flex-nowrap">
             <DialogTitle>Deseja confirmar o agendamento?</DialogTitle>
             <DialogClose
@@ -47,9 +72,13 @@ export function ConfirmationDateModal({
           </DialogDescription>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
+              <Button variant="outline" disabled={isSubmitting}>
+                Cancelar
+              </Button>
             </DialogClose>
-            <Button type="submit">Confirmar</Button>
+            <Button type="submit" disabled={disabled || isSubmitting}>
+              {isSubmitting ? "Confirmando..." : "Confirmar"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
