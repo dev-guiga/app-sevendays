@@ -12,10 +12,10 @@ RSpec.describe UsersController, type: :controller do
 
   describe "routing" do
     it "routes POST /api/users to users#create" do
-      expect(post: "/api/users").to route_to("users#create")
+      expect(post: "/api/users").to route_to("users#create", format: :json)
     end
     it "routes GET /api/user to users#show" do
-      expect(get: "/api/user").to route_to("users#show")
+      expect(get: "/api/user").to route_to("users#show", format: :json)
     end
   end
 

@@ -24,23 +24,23 @@ RSpec.describe Owner::SchedulingsController, type: :controller do
 
   describe "routing" do
     it "routes GET /api/owner/sidebar/schedulings to owner/schedulings#sidebar" do
-      expect(get: "/api/owner/sidebar/schedulings").to route_to("owner/schedulings#sidebar")
+      expect(get: "/api/owner/sidebar/schedulings").to route_to("owner/schedulings#sidebar", format: :json)
     end
 
     it "routes POST /api/owner/diary/schedulings to owner/schedulings#create" do
-      expect(post: "/api/owner/diary/schedulings").to route_to("owner/schedulings#create")
+      expect(post: "/api/owner/diary/schedulings").to route_to("owner/schedulings#create", format: :json)
     end
 
     it "routes GET /api/owner/diary/schedulings to owner/schedulings#index" do
-      expect(get: "/api/owner/diary/schedulings").to route_to("owner/schedulings#index")
+      expect(get: "/api/owner/diary/schedulings").to route_to("owner/schedulings#index", format: :json)
     end
 
     it "routes PATCH /api/owner/diary/schedulings/:id to owner/schedulings#update" do
-      expect(patch: "/api/owner/diary/schedulings/1").to route_to("owner/schedulings#update", id: "1")
+      expect(patch: "/api/owner/diary/schedulings/1").to route_to("owner/schedulings#update", id: "1", format: :json)
     end
 
     it "routes DELETE /api/owner/diary/schedulings/:id to owner/schedulings#destroy" do
-      expect(delete: "/api/owner/diary/schedulings/1").to route_to("owner/schedulings#destroy", id: "1")
+      expect(delete: "/api/owner/diary/schedulings/1").to route_to("owner/schedulings#destroy", id: "1", format: :json)
     end
   end
 
@@ -203,7 +203,8 @@ RSpec.describe Owner::SchedulingsController, type: :controller do
           rule: scheduling_rule,
           overrides: {
             date: scheduled_at.to_date,
-            time: scheduled_at.strftime("%H:%M")
+            time: scheduled_at.strftime("%H:%M"),
+            status: "marked"
           }
         )
       )
@@ -226,6 +227,115 @@ RSpec.describe Owner::SchedulingsController, type: :controller do
         expect(body["schedulings"].first["date"]).to eq(scheduled_at.to_date.to_s)
         expect(body["schedulings"].first["time"]).to be_present
         expect(body["schedulings"].first["status"]).to eq(scheduling.status)
+      end
+
+      it "filters by name, email, date, time and status" do
+        filtered_user = create_user!(
+          status: "user",
+          first_name: "Marina",
+          last_name: "Silva",
+          email: "marina.filter@example.com"
+        )
+        other_user = create_user!(
+          status: "user",
+          first_name: "Carlos",
+          last_name: "Oliveira",
+          email: "carlos.other@example.com"
+        )
+
+        target_date = Date.current + 2.days
+        target_scheduling = Scheduling.create!(
+          scheduling_attributes(
+            user: filtered_user,
+            diary: diary,
+            rule: scheduling_rule,
+            overrides: {
+              date: target_date,
+              time: "15:00",
+              status: "cancelled",
+              description: "Descricao de filtro cancelado"
+            }
+          )
+        )
+
+        Scheduling.create!(
+          scheduling_attributes(
+            user: other_user,
+            diary: diary,
+            rule: scheduling_rule,
+            overrides: {
+              date: target_date,
+              time: "16:00",
+              status: "cancelled",
+              description: "Descricao de filtro nao esperada"
+            }
+          )
+        )
+
+        get :index,
+            params: {
+              name: "Marina",
+              email: "marina.filter",
+              date: target_date.to_s,
+              time: "15:00",
+              status: "cancelled"
+            },
+            format: :json
+
+        expect(response).to have_http_status(:ok)
+        body = response.parsed_body
+        expect(body["schedulings"].size).to eq(1)
+        expect(body["schedulings"].first["id"]).to eq(target_scheduling.id)
+      end
+
+      it "orders by created_at in asc and desc" do
+        ordered_user = create_user!(
+          status: "user",
+          first_name: "Order",
+          last_name: "Check",
+          email: "order.check@example.com"
+        )
+
+        older_scheduling = Scheduling.create!(
+          scheduling_attributes(
+            user: ordered_user,
+            diary: diary,
+            rule: scheduling_rule,
+            overrides: {
+              date: Date.current + 3.days,
+              time: "13:00",
+              status: "marked",
+              created_at: Time.current - 2.hours,
+              updated_at: Time.current - 2.hours
+            }
+          )
+        )
+        newer_scheduling = Scheduling.create!(
+          scheduling_attributes(
+            user: ordered_user,
+            diary: diary,
+            rule: scheduling_rule,
+            overrides: {
+              date: Date.current + 3.days,
+              time: "14:00",
+              status: "marked",
+              created_at: Time.current - 1.hour,
+              updated_at: Time.current - 1.hour
+            }
+          )
+        )
+
+        get :index, params: { email: ordered_user.email, created_at_order: "asc" }, format: :json
+
+        expect(response).to have_http_status(:ok)
+        body = response.parsed_body
+        expect(body["schedulings"].map { |item| item["id"] }).to eq([older_scheduling.id, newer_scheduling.id])
+
+        get :index, params: { email: ordered_user.email, create_At: "desc" }, format: :json
+
+        expect(response).to have_http_status(:ok)
+        body = response.parsed_body
+        expect(body["schedulings"].map { |item| item["id"] }).to eq([newer_scheduling.id, older_scheduling.id])
       end
     end
 
@@ -265,7 +375,7 @@ RSpec.describe Owner::SchedulingsController, type: :controller do
 
   describe "#sidebar" do
     around do |example|
-      travel_to(Time.zone.local(2026, 1, 1, 10, 0, 0)) { example.run }
+      travel_to(Time.zone.local(2026, 1, 1, 5, 0, 0)) { example.run }
     end
 
     let!(:today_marked_schedulings) do

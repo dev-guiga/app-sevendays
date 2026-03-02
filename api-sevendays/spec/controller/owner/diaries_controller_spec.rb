@@ -19,15 +19,15 @@ RSpec.describe Owner::DiariesController, type: :controller do
 
   describe "routing" do
     it "routes POST /api/owner/diary to owner/diaries#create" do
-      expect(post: "/api/owner/diary").to route_to("owner/diaries#create")
+      expect(post: "/api/owner/diary").to route_to("owner/diaries#create", format: :json)
     end
 
     it "routes GET /api/owner/diary to owner/diaries#show" do
-      expect(get: "/api/owner/diary").to route_to("owner/diaries#show")
+      expect(get: "/api/owner/diary").to route_to("owner/diaries#show", format: :json)
     end
 
     it "routes PATCH /api/owner/diary to owner/diaries#update" do
-      expect(patch: "/api/owner/diary").to route_to("owner/diaries#update")
+      expect(patch: "/api/owner/diary").to route_to("owner/diaries#update", format: :json)
     end
   end
 

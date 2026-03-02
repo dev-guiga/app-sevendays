@@ -6,11 +6,11 @@ RSpec.describe DiariesController, type: :controller do
 
   describe "routing" do
     it "routes GET /api/diaries to diaries#index" do
-      expect(get: "/api/diaries").to route_to("diaries#index")
+      expect(get: "/api/diaries").to route_to("diaries#index", format: :json)
     end
 
     it "routes GET /api/diaries/:id/days to diaries#days" do
-      expect(get: "/api/diaries/1/days").to route_to("diaries#days", id: "1")
+      expect(get: "/api/diaries/1/days").to route_to("diaries#days", id: "1", format: :json)
     end
   end
 

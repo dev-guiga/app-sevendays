@@ -27,27 +27,27 @@ RSpec.describe SchedulingsController, type: :controller do
 
   describe "routing" do
     it "routes GET /api/sidebar/schedulings to schedulings#sidebar" do
-      expect(get: "/api/sidebar/schedulings").to route_to("schedulings#sidebar")
+      expect(get: "/api/sidebar/schedulings").to route_to("schedulings#sidebar", format: :json)
     end
 
     it "routes POST /api/diaries/:diary_id/schedulings to schedulings#create" do
-      expect(post: "/api/diaries/1/schedulings").to route_to("schedulings#create", diary_id: "1")
+      expect(post: "/api/diaries/1/schedulings").to route_to("schedulings#create", diary_id: "1", format: :json)
     end
 
     it "routes GET /api/diaries/:diary_id/schedulings to schedulings#index" do
-      expect(get: "/api/diaries/1/schedulings").to route_to("schedulings#index", diary_id: "1")
+      expect(get: "/api/diaries/1/schedulings").to route_to("schedulings#index", diary_id: "1", format: :json)
     end
 
     it "routes GET /api/diaries/:diary_id/schedulings/:id to schedulings#show" do
-      expect(get: "/api/diaries/1/schedulings/2").to route_to("schedulings#show", diary_id: "1", id: "2")
+      expect(get: "/api/diaries/1/schedulings/2").to route_to("schedulings#show", diary_id: "1", id: "2", format: :json)
     end
 
     it "routes PATCH /api/diaries/:diary_id/schedulings/:id to schedulings#update" do
-      expect(patch: "/api/diaries/1/schedulings/2").to route_to("schedulings#update", diary_id: "1", id: "2")
+      expect(patch: "/api/diaries/1/schedulings/2").to route_to("schedulings#update", diary_id: "1", id: "2", format: :json)
     end
 
     it "routes DELETE /api/diaries/:diary_id/schedulings/:id to schedulings#destroy" do
-      expect(delete: "/api/diaries/1/schedulings/2").to route_to("schedulings#destroy", diary_id: "1", id: "2")
+      expect(delete: "/api/diaries/1/schedulings/2").to route_to("schedulings#destroy", diary_id: "1", id: "2", format: :json)
     end
   end
 
@@ -235,7 +235,7 @@ RSpec.describe SchedulingsController, type: :controller do
 
   describe "#sidebar" do
     around do |example|
-      travel_to(Time.zone.local(2026, 1, 1, 10, 0, 0)) { example.run }
+      travel_to(Time.zone.local(2026, 1, 1, 5, 0, 0)) { example.run }
     end
 
     let!(:today_marked_schedulings) do
@@ -293,7 +293,7 @@ RSpec.describe SchedulingsController, type: :controller do
           rule: scheduling_rule,
           overrides: {
             date: Date.current,
-            time: "17:30",
+            time: "20:00",
             status: "marked",
             description: "Descricao de outro usuario"
           }

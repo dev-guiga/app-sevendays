@@ -14,11 +14,11 @@ RSpec.describe Devise::SessionsController, type: :controller do
 
   describe "routes" do
     it "routes POST /api/users/sign_in to devise/sessions#create" do
-      expect(post: "/api/users/sign_in").to route_to("devise/sessions#create")
+      expect(post: "/api/users/sign_in").to route_to("devise/sessions#create", format: :json)
     end
 
     it "routes DELETE /api/users/sign_out to devise/sessions#destroy" do
-      expect(delete: "/api/users/sign_out").to route_to("devise/sessions#destroy")
+      expect(delete: "/api/users/sign_out").to route_to("devise/sessions#destroy", format: :json)
     end
   end
 

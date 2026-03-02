@@ -27,19 +27,19 @@ RSpec.describe Owner::SchedulingRulesController, type: :controller do
 
   describe "routing" do
     it "routes PATCH /api/owner/diary/scheduling_rule to owner/scheduling_rules#update" do
-      expect(patch: "/api/owner/diary/scheduling_rule").to route_to("owner/scheduling_rules#update")
+      expect(patch: "/api/owner/diary/scheduling_rule").to route_to("owner/scheduling_rules#update", format: :json)
     end
 
     it "routes GET /api/owner/diary/scheduling_rule to owner/scheduling_rules#show" do
-      expect(get: "/api/owner/diary/scheduling_rule").to route_to("owner/scheduling_rules#show")
+      expect(get: "/api/owner/diary/scheduling_rule").to route_to("owner/scheduling_rules#show", format: :json)
     end
 
     it "routes POST /api/owner/diary/scheduling_rule to owner/scheduling_rules#create" do
-      expect(post: "/api/owner/diary/scheduling_rule").to route_to("owner/scheduling_rules#create")
+      expect(post: "/api/owner/diary/scheduling_rule").to route_to("owner/scheduling_rules#create", format: :json)
     end
 
     it "routes DELETE /api/owner/diary/scheduling_rule to owner/scheduling_rules#destroy" do
-      expect(delete: "/api/owner/diary/scheduling_rule").to route_to("owner/scheduling_rules#destroy")
+      expect(delete: "/api/owner/diary/scheduling_rule").to route_to("owner/scheduling_rules#destroy", format: :json)
     end
   end
 

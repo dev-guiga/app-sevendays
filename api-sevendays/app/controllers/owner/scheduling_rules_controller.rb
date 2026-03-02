@@ -77,7 +77,7 @@ class Owner::SchedulingRulesController < ApplicationController
   private
   def scheduling_rule_params
     raw_params = params.fetch(:scheduling_rules, ActionController::Parameters.new)
-    raw_params.permit(
+    permitted = raw_params.permit(
       :start_time,
       :end_time,
       :start_date,
@@ -85,6 +85,18 @@ class Owner::SchedulingRulesController < ApplicationController
       :session_duration_minutes,
       week_days: []
     )
+
+    normalize_week_days!(permitted)
+  end
+
+  def normalize_week_days!(params_hash)
+    return params_hash unless params_hash.key?(:week_days)
+
+    params_hash[:week_days] = Array(params_hash[:week_days]).filter_map do |day|
+      Integer(day, exception: false)
+    end
+
+    params_hash
   end
 
   def set_diary

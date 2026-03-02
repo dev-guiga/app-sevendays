@@ -11,10 +11,7 @@ class Owner::SchedulingsController < ApplicationController
     page = pagination_page
     per_page = PER_PAGE
 
-    schedulings_scope = @diary.schedulings
-      .includes(:user)
-      .marked
-      .order(date: :desc, time: :desc, created_at: :desc)
+    schedulings_scope = filtered_schedulings_scope
 
     total_count = schedulings_scope.count
     total_pages = (total_count.to_f / per_page).ceil
@@ -115,6 +112,91 @@ class Owner::SchedulingsController < ApplicationController
   def pagination_page
     page = params[:page].to_i
     page.positive? ? page : 1
+  end
+
+  def filtered_schedulings_scope
+    scope = @diary.schedulings
+      .includes(:user)
+      .joins(:user)
+
+    scope = filter_by_name(scope)
+    scope = filter_by_email(scope)
+    scope = filter_by_date(scope)
+    scope = filter_by_time(scope)
+    scope = filter_by_status(scope)
+
+    scope.order(created_at: created_at_order)
+  end
+
+  def filter_by_name(scope)
+    name = params[:name].to_s.strip
+    return scope if name.blank?
+
+    search_term = "%#{ActiveRecord::Base.sanitize_sql_like(name)}%"
+    scope.where("CONCAT(users.first_name, ' ', users.last_name) LIKE ?", search_term)
+  end
+
+  def filter_by_email(scope)
+    email = params[:email].to_s.strip
+    return scope if email.blank?
+
+    search_term = "%#{ActiveRecord::Base.sanitize_sql_like(email)}%"
+    scope.where("users.email LIKE ?", search_term)
+  end
+
+  def filter_by_date(scope)
+    date = parsed_date_filter
+    return scope if date.blank?
+
+    scope.where(date: date)
+  end
+
+  def filter_by_time(scope)
+    time = normalized_time_filter
+    return scope if time.blank?
+
+    scope.where("TIME_FORMAT(schedulings.time, '%H:%i') = ?", time)
+  end
+
+  def filter_by_status(scope)
+    status = params[:status].to_s.strip.downcase
+    return scope.marked if status.blank?
+    return scope.none unless Scheduling.statuses.key?(status)
+
+    scope.where(status: status)
+  end
+
+  def parsed_date_filter
+    raw_date = params[:date].to_s.strip
+    return if raw_date.blank?
+    return unless raw_date.match?(/\A\d{4}-\d{2}-\d{2}\z/)
+
+    Date.iso8601(raw_date)
+  rescue ArgumentError
+    nil
+  end
+
+  def normalized_time_filter
+    raw_time = params[:time].to_s.strip
+    return if raw_time.blank?
+
+    return raw_time if raw_time.match?(/\A([01]\d|2[0-3]):[0-5]\d\z/)
+
+    match = raw_time.match(/\A([01]\d|2[0-3]):([0-5]\d):([0-5]\d)\z/)
+    return "#{match[1]}:#{match[2]}" if match
+  end
+
+  def created_at_order
+    raw_order =
+      params[:created_at_order].presence ||
+      params[:created_at].presence ||
+      params[:create_at].presence ||
+      params[:create_At].presence
+
+    normalized_order = raw_order.to_s.strip.downcase
+    return :asc if normalized_order == "asc"
+
+    :desc
   end
 
   def scheduling_params
