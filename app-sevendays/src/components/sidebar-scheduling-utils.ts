@@ -16,6 +16,7 @@ export type SidebarScheduling = {
 
 export type SidebarSchedulingCard = {
   id: number;
+  diaryId: number;
   date: string;
   time: string;
   service: string;
@@ -53,6 +54,7 @@ export function mapSidebarSchedulingsToCards(
 ): SidebarSchedulingCard[] {
   return (schedulings ?? []).map((scheduling) => ({
     id: scheduling.id,
+    diaryId: scheduling.diary_id,
     date: formatSchedulingDate(scheduling.date),
     time: formatSchedulingTime(scheduling.time),
     service: scheduling.diary_title || "Atendimento",

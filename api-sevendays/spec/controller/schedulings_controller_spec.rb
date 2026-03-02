@@ -30,6 +30,10 @@ RSpec.describe SchedulingsController, type: :controller do
       expect(get: "/api/sidebar/schedulings").to route_to("schedulings#sidebar", format: :json)
     end
 
+    it "routes GET /api/sidebar/schedulings/latest to schedulings#latest" do
+      expect(get: "/api/sidebar/schedulings/latest").to route_to("schedulings#latest", format: :json)
+    end
+
     it "routes POST /api/diaries/:diary_id/schedulings to schedulings#create" do
       expect(post: "/api/diaries/1/schedulings").to route_to("schedulings#create", diary_id: "1", format: :json)
     end
@@ -339,6 +343,109 @@ RSpec.describe SchedulingsController, type: :controller do
     context "when unauthenticated" do
       it "returns unauthorized" do
         get :sidebar, format: :json
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
+  describe "#latest" do
+    around do |example|
+      travel_to(Time.zone.local(2026, 1, 1, 5, 0, 0)) { example.run }
+    end
+
+    let!(:latest_marked_schedulings) do
+      (1..12).map do |index|
+        Scheduling.create!(
+          scheduling_attributes(
+            user: user,
+            diary: diary,
+            rule: scheduling_rule,
+            overrides: {
+              date: Date.current + index.days,
+              time: "10:00",
+              status: "marked",
+              description: "Descricao latest #{index}",
+              created_at: Time.current - index.minutes,
+              updated_at: Time.current - index.minutes
+            }
+          )
+        )
+      end
+    end
+    let!(:latest_cancelled_scheduling) do
+      Scheduling.create!(
+        scheduling_attributes(
+          user: user,
+          diary: diary,
+          rule: scheduling_rule,
+          overrides: {
+            date: Date.current + 1.day,
+            time: "11:00",
+            status: "cancelled",
+            description: "Descricao cancelada latest",
+            created_at: Time.current - 10.seconds,
+            updated_at: Time.current - 10.seconds
+          }
+        )
+      )
+    end
+    let!(:latest_other_user_scheduling) do
+      Scheduling.create!(
+        scheduling_attributes(
+          user: other_user,
+          diary: diary,
+          rule: scheduling_rule,
+          overrides: {
+            date: Date.current + 2.days,
+            time: "12:00",
+            status: "marked",
+            description: "Descricao de outro usuario latest",
+            created_at: Time.current - 5.seconds,
+            updated_at: Time.current - 5.seconds
+          }
+        )
+      )
+    end
+
+    context "when authorized" do
+      before do
+        sign_in(user)
+        scheduling_rule
+      end
+
+      it "returns at most 10 latest marked schedulings ordered by created_at desc" do
+        get :latest, format: :json
+
+        expect(response).to have_http_status(:ok)
+        body = response.parsed_body
+        expect(body["success"]).to eq(true)
+        expect(body["schedulings"].size).to eq(10)
+
+        expected_ids = latest_marked_schedulings.sort_by(&:created_at).reverse.first(10).map(&:id)
+        returned_ids = body["schedulings"].map { |item| item["id"] }
+        expect(returned_ids).to eq(expected_ids)
+
+        first_item = body["schedulings"].first
+        expect(first_item["diary_title"]).to eq(diary.title)
+        expect(first_item["professional_name"]).to eq(owner.full_name)
+        expect(first_item["status"]).to eq("marked")
+      end
+    end
+
+    context "when current user is owner" do
+      before { sign_in(owner) }
+
+      it "returns forbidden" do
+        get :latest, format: :json
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "when unauthenticated" do
+      it "returns unauthorized" do
+        get :latest, format: :json
 
         expect(response).to have_http_status(:unauthorized)
       end

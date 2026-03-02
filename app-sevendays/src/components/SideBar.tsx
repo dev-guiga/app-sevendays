@@ -185,16 +185,6 @@ export function SidebarByRole() {
     };
   }, []);
 
-  const handleOpenUserPortal = () => {
-    if (!currentUser?.username) {
-      toast.error("Nao foi possivel abrir o portal do usuario.");
-      return;
-    }
-
-    router.push(`/${currentUser.username}/portal`);
-    router.refresh();
-  };
-
   const handleLogout = async () => {
     if (isLoggingOut) {
       return;
@@ -254,7 +244,7 @@ export function SidebarByRole() {
           ) : isOwner ? (
             <SidebarOwner user={currentUser} isLoggingOut={isLoggingOut} onLogout={handleLogout} />
           ) : (
-            <SidebarUser user={currentUser} isLoggingOut={isLoggingOut} onLogout={handleLogout} onOpenPortal={handleOpenUserPortal} />
+            <SidebarUser user={currentUser} isLoggingOut={isLoggingOut} onLogout={handleLogout} />
           )}
         </div>
       </SheetContent>

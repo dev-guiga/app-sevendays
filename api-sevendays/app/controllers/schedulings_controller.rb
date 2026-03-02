@@ -1,7 +1,7 @@
 class SchedulingsController < ApplicationController
   before_action :authenticate_user!
   before_action :ensure_non_owner!
-  before_action :set_diary, except: [ :sidebar ]
+  before_action :set_diary, except: [ :sidebar, :latest ]
 
   def index
     return if performed?
@@ -94,6 +94,18 @@ class SchedulingsController < ApplicationController
       .marked
       .where(date: Time.zone.today)
       .order(time: :desc, created_at: :desc)
+      .limit(10)
+
+    render :sidebar, status: :ok
+  end
+
+  def latest
+    return if performed?
+
+    @schedulings = current_user.schedulings
+      .includes(diary: :user)
+      .marked
+      .order(created_at: :desc, id: :desc)
       .limit(10)
 
     render :sidebar, status: :ok

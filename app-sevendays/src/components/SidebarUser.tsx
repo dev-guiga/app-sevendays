@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -56,7 +56,6 @@ interface SidebarUserProps {
   } | null;
   isLoggingOut: boolean;
   onLogout: () => void;
-  onOpenPortal: () => void;
 }
 
 function getUserName(user: SidebarUserProps["user"]) {
@@ -85,70 +84,123 @@ function getUserAddress(user: SidebarUserProps["user"]) {
   return fullAddress || "Endereco nao cadastrado";
 }
 
+function extractApiErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error;
+  }
+
+  if (error && typeof error === "object") {
+    const payload = error as {
+      error?: {
+        message?: string;
+      };
+      message?: string;
+    };
+
+    if (
+      typeof payload.error?.message === "string" &&
+      payload.error.message.trim().length > 0
+    ) {
+      return payload.error.message;
+    }
+
+    if (typeof payload.message === "string" && payload.message.trim().length > 0) {
+      return payload.message;
+    }
+  }
+
+  return fallback;
+}
+
 export function SidebarUser({
   user,
   isLoggingOut,
   onLogout,
-  onOpenPortal,
 }: SidebarUserProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
-    null,
-  );
+  const [selectedScheduling, setSelectedScheduling] = useState<SidebarSchedulingCard | null>(null);
   const [schedulings, setSchedulings] = useState<SidebarSchedulingCard[]>([]);
   const [isLoadingSchedulings, setIsLoadingSchedulings] = useState(true);
+  const [isCancellingScheduling, setIsCancellingScheduling] = useState(false);
+
+  const loadUserSidebarSchedulings = useCallback(async () => {
+    setIsLoadingSchedulings(true);
+
+    const result = await sevendaysapi.get<SidebarSchedulingResponse>(
+      "/sidebar/schedulings/latest",
+      {
+        withCredentials: true,
+      },
+    );
+
+    if (result.statusCode === 401 || result.statusCode === 403) {
+      setSchedulings([]);
+      setIsLoadingSchedulings(false);
+      return;
+    }
+
+    if (result.error || result.statusCode !== 200 || !result.data?.success) {
+      toast.error("Nao foi possivel carregar os agendamentos da sidebar.");
+      setSchedulings([]);
+      setIsLoadingSchedulings(false);
+      return;
+    }
+
+    setSchedulings(mapSidebarSchedulingsToCards(result.data.schedulings));
+    setIsLoadingSchedulings(false);
+  }, []);
 
   useEffect(() => {
     let ignore = false;
 
-    async function loadUserSidebarSchedulings() {
-      setIsLoadingSchedulings(true);
-
-      const result = await sevendaysapi.get<SidebarSchedulingResponse>(
-        "/sidebar/schedulings",
-        {
-          withCredentials: true,
-        },
-      );
-
+    async function loadSafely() {
       if (ignore) {
         return;
       }
 
-      if (result.statusCode === 401 || result.statusCode === 403) {
-        setSchedulings([]);
-        setIsLoadingSchedulings(false);
-        return;
-      }
-
-      if (result.error || result.statusCode !== 200 || !result.data?.success) {
-        toast.error("Nao foi possivel carregar os agendamentos da sidebar.");
-        setSchedulings([]);
-        setIsLoadingSchedulings(false);
-        return;
-      }
-
-      setSchedulings(mapSidebarSchedulingsToCards(result.data.schedulings));
-      setIsLoadingSchedulings(false);
+      await loadUserSidebarSchedulings();
     }
 
-    void loadUserSidebarSchedulings();
+    void loadSafely();
 
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [loadUserSidebarSchedulings]);
 
-  const handleCancelClick = (serviceId: number) => {
-    setSelectedServiceId(serviceId);
+  const handleCancelClick = (scheduling: SidebarSchedulingCard) => {
+    setSelectedScheduling(scheduling);
     setCancelDialogOpen(true);
   };
 
-  const handleConfirmCancel = () => {
-    // Lógica para cancelar o agendamento será adicionada aqui
-    console.log("Confirmar cancelamento do horário:", selectedServiceId);
+  const handleConfirmCancel = async () => {
+    if (!selectedScheduling) {
+      return;
+    }
+
+    setIsCancellingScheduling(true);
+
+    const result = await sevendaysapi.delete<{ success?: boolean }>(
+      `/diaries/${selectedScheduling.diaryId}/schedulings/${selectedScheduling.id}`,
+      undefined,
+      {
+        withCredentials: true,
+      },
+    );
+
+    if (result.error || result.statusCode !== 200 || !result.data?.success) {
+      toast.error(
+        extractApiErrorMessage(result.error, "Nao foi possivel cancelar o horario agendado."),
+      );
+      setIsCancellingScheduling(false);
+      return;
+    }
+
+    toast.success("Horario cancelado com sucesso.");
+    await loadUserSidebarSchedulings();
+    setIsCancellingScheduling(false);
     setCancelDialogOpen(false);
-    setSelectedServiceId(null);
+    setSelectedScheduling(null);
   };
 
   return (
@@ -189,15 +241,6 @@ export function SidebarUser({
 
           <div className="flex flex-col gap-4">
             <h2 className="text-xl font-bold text-accent-foreground">
-              Atalhos do Usuario
-            </h2>
-            <Button type="button" variant="outline" onClick={onOpenPortal}>
-              Abrir portal
-            </Button>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <h2 className="text-xl font-bold text-accent-foreground">
               Horarios Marcados
             </h2>
 
@@ -222,7 +265,7 @@ export function SidebarUser({
               </div>
             ) : schedulings.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Sem agendamentos hoje.
+                Sem horarios marcados recentes.
               </p>
             ) : (
               <div className="flex flex-col gap-3 max-h-150 overflow-scroll [&::-webkit-scrollbar]:hidden">
@@ -248,7 +291,7 @@ export function SidebarUser({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleCancelClick(item.id)}
+                          onClick={() => handleCancelClick(item)}
                           className="h-8 w-8 text-muted-foreground hover:text-primary"
                         >
                           <Trash size={18} />
@@ -271,7 +314,15 @@ export function SidebarUser({
         </div>
       </SheetContent>
 
-      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+      <Dialog
+        open={cancelDialogOpen}
+        onOpenChange={(nextOpen) => {
+          setCancelDialogOpen(nextOpen);
+          if (!nextOpen && !isCancellingScheduling) {
+            setSelectedScheduling(null);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cancelar Agendamento</DialogTitle>
@@ -280,11 +331,24 @@ export function SidebarUser({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancelDialogOpen(false);
+                if (!isCancellingScheduling) {
+                  setSelectedScheduling(null);
+                }
+              }}
+              disabled={isCancellingScheduling}
+            >
               Nao
             </Button>
-            <Button variant="default" onClick={handleConfirmCancel}>
-              Confirmar
+            <Button
+              variant="default"
+              onClick={handleConfirmCancel}
+              disabled={isCancellingScheduling}
+            >
+              {isCancellingScheduling ? "Cancelando..." : "Confirmar"}
             </Button>
           </DialogFooter>
         </DialogContent>

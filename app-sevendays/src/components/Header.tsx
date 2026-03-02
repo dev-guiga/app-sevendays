@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import logo from "@/app/assets/image/logo-seven-days.png";
 import { HeaderNavigationWrapper } from "@/components/HeaderNavigationWrapper";
@@ -9,7 +9,7 @@ import { SidebarOwner } from "@/components/SidebarOwner";
 import { SidebarUser } from "@/components/SidebarUser";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sevendaysapi } from "@/lib/sevendaysapi";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { toast } from "sonner";
 
@@ -32,26 +32,48 @@ type CurrentUserResponse = {
   user?: CurrentUser;
 };
 
+const USER_REFRESH_INTERVAL_MS = 12_000;
+
 export function Header() {
   const router = useRouter();
+  const pathname = usePathname();
 
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  const hasLoadedOnceRef = useRef(false);
+  const isMountedRef = useRef(false);
+  const isFetchingRef = useRef(false);
+
   useEffect(() => {
-    let ignore = false;
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-    async function loadCurrentUser() {
-      setIsLoadingUser(true);
+  const loadCurrentUser = useCallback(
+    async ({ silent = true }: { silent?: boolean } = {}) => {
+      if (isFetchingRef.current) {
+        return;
+      }
 
+      if (!silent || !hasLoadedOnceRef.current) {
+        setIsLoadingUser(true);
+      }
+
+      isFetchingRef.current = true;
       const result = await sevendaysapi.get<CurrentUserResponse>("/user", {
         withCredentials: true,
       });
+      isFetchingRef.current = false;
 
-      if (ignore) {
+      if (!isMountedRef.current) {
         return;
       }
+
+      hasLoadedOnceRef.current = true;
 
       if (result.statusCode === 401 || result.statusCode === 403) {
         setCurrentUser(null);
@@ -60,31 +82,44 @@ export function Header() {
       }
 
       if (result.error || result.statusCode !== 200 || !result.data?.user) {
-        setCurrentUser(null);
         setIsLoadingUser(false);
         return;
       }
 
       setCurrentUser(result.data.user);
       setIsLoadingUser(false);
-    }
+    },
+    [],
+  );
 
-    void loadCurrentUser();
+  useEffect(() => {
+    void loadCurrentUser({ silent: true });
+  }, [loadCurrentUser, pathname]);
+
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      void loadCurrentUser({ silent: true });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void loadCurrentUser({ silent: true });
+      }
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    const intervalId = window.setInterval(() => {
+      void loadCurrentUser({ silent: true });
+    }, USER_REFRESH_INTERVAL_MS);
 
     return () => {
-      ignore = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
-
-  const handleOpenUserPortal = () => {
-    if (!currentUser?.username) {
-      toast.error("Nao foi possivel abrir o portal do usuario.");
-      return;
-    }
-
-    router.push(`/${currentUser.username}/portal`);
-    router.refresh();
-  };
+  }, [loadCurrentUser]);
 
   const handleLogout = async () => {
     if (isLoggingOut) {
@@ -109,6 +144,8 @@ export function Header() {
     }
 
     toast.success("Sessao encerrada com sucesso.");
+    setCurrentUser(null);
+    setIsLoadingUser(false);
     setIsLoggingOut(false);
     router.push("/login");
     router.refresh();
@@ -143,7 +180,6 @@ export function Header() {
                   user={currentUser}
                   isLoggingOut={isLoggingOut}
                   onLogout={handleLogout}
-                  onOpenPortal={handleOpenUserPortal}
                 />
               )}
             </div>
