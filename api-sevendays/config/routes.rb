@@ -4,6 +4,7 @@ Rails.application.routes.draw do
   scope path: "api", defaults: { format: :json } do
     resources :users, only: [ :create ]
     resource :user, only: [ :show ]
+    get "user/schedulings", to: "schedulings#my_schedulings"
     get "sidebar/schedulings", to: "schedulings#sidebar"
     get "sidebar/schedulings/latest", to: "schedulings#latest"
 

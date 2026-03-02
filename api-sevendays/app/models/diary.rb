@@ -21,7 +21,7 @@ class Diary < ApplicationRecord
     return [] if start_seconds.blank? || end_seconds.blank?
     return [] if start_seconds >= end_seconds
 
-    booked = schedulings.where(date: date).where.not(status: "cancelled").to_a
+    booked = schedulings.active.where(date: date).where.not(status: "cancelled").to_a
     slots = []
     step_seconds = 15.minutes
     day_start = Time.zone.local(date.year, date.month, date.day)

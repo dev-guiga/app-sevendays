@@ -678,6 +678,7 @@ RSpec.describe Owner::SchedulingsController, type: :controller do
 
         scheduling.reload
         expect(scheduling).to be_cancelled
+        expect(scheduling.soft_deleted).to eq(true)
       end
     end
 

@@ -15,7 +15,7 @@ class CancelUserSchedulingService
       return error_result("Scheduling does not belong to user", :unprocessable_entity)
     end
 
-    return success_result(scheduling) if scheduling.cancelled?
+    return success_result(scheduling) if scheduling.cancelled? && scheduling.soft_deleted?
 
     if too_soon_to_cancel?(scheduling)
       return error_result("Scheduling cannot be cancelled within #{lead_minutes_for(scheduling)} minutes", :unprocessable_entity)
@@ -23,8 +23,9 @@ class CancelUserSchedulingService
 
     diary.with_lock do
       now = Time.current
-      scheduling.update_columns(status: "cancelled", updated_at: now)
+      scheduling.update_columns(status: "cancelled", soft_deleted: true, updated_at: now)
       scheduling.status = "cancelled"
+      scheduling.soft_deleted = true
       scheduling.updated_at = now
 
       success_result(scheduling)

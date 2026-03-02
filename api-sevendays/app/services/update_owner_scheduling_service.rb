@@ -17,6 +17,10 @@ class UpdateOwnerSchedulingService
       return error_result("Scheduling does not belong to user", :unprocessable_entity)
     end
 
+    if scheduling.soft_deleted? || scheduling.cancelled?
+      return error_result("Scheduling was cancelled", :unprocessable_entity)
+    end
+
     if too_soon_to_edit?(scheduling)
       return error_result("Scheduling cannot be edited within #{lead_minutes_for(scheduling)} minutes", :unprocessable_entity)
     end

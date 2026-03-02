@@ -65,19 +65,21 @@ function OwnerNavigation({ ownerId }: { ownerId: number }) {
 function UserNavigation({ username }: { username: string }) {
   const pathname = usePathname();
   const portalPath = `/${username}/portal`;
-  const profilePath = "#";
+  const profilePath = `/${username}/perfil`;
+  const isPortalActive = pathname === portalPath || /\/portal(\/|$)/.test(pathname);
+  const isProfileActive = pathname === profilePath || /\/perfil(\/|$)/.test(pathname);
 
   return (
     <>
       <HeaderNavLink
-        href={portalPath}
-        label="Portal"
-        isActive={pathname === portalPath || pathname.startsWith(`${portalPath}/`)}
-      />
-      <HeaderNavLink
         href={profilePath}
         label="Perfil"
-        isActive={false}
+        isActive={isProfileActive}
+      />
+      <HeaderNavLink
+        href={portalPath}
+        label="Portal"
+        isActive={isPortalActive}
       />
     </>
   );

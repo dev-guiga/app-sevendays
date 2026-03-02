@@ -70,7 +70,7 @@ class UpdateOwnerSchedulingRuleService
   end
 
   def conflicting_scheduling_ids(rule, duration_change)
-    diary.schedulings.where.not(status: "cancelled").find_each.filter_map do |scheduling|
+    diary.schedulings.active.where.not(status: "cancelled").find_each.filter_map do |scheduling|
       next unless conflicts_with_rule?(scheduling, rule, duration_change)
 
       scheduling.id

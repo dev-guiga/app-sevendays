@@ -100,6 +100,7 @@ class Owner::SchedulingsController < ApplicationController
     authorize @diary, :schedule?
     @schedulings = @diary.schedulings
       .includes(:user)
+      .active
       .marked
       .where(date: Time.zone.today)
       .order(time: :desc, created_at: :desc)

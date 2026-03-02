@@ -51,6 +51,30 @@ RSpec.describe DiariesController, type: :controller do
         expect(body.dig("pagination", "has_prev")).to eq(true)
         expect(body.dig("pagination", "has_next")).to eq(false)
       end
+
+      it "filters diaries by professional name or email" do
+        matching_owner = create_user!(
+          first_name: "Marina",
+          last_name: "Santos",
+          email: "marina.filter@example.com"
+        )
+        non_matching_owner = create_user!(
+          first_name: "Carlos",
+          last_name: "Oliveira",
+          email: "carlos.other@example.com"
+        )
+        matching_diary = create_diary!(user: matching_owner)
+        create_diary!(user: non_matching_owner)
+
+        get :index, params: { query: "marina.filter@example.com" }, format: :json
+
+        expect(response).to have_http_status(:ok)
+        body = response.parsed_body
+
+        expect(body["success"]).to eq(true)
+        expect(body["diaries"].size).to eq(1)
+        expect(body["diaries"].first["id"]).to eq(matching_diary.id)
+      end
     end
 
     context "when unauthenticated" do

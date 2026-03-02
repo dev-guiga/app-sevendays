@@ -14,6 +14,8 @@ class Scheduling < ApplicationRecord
 
   enum :status, { available: "available", marked: "marked", cancelled: "cancelled" }
 
+  scope :active, -> { where(soft_deleted: false) }
+
   before_validation :sync_duration_from_rule, on: :create
 
   validate :time_at_least_next_hour
@@ -77,7 +79,7 @@ class Scheduling < ApplicationRecord
       end_at = scheduled_end_at
       return if start_at.blank? || end_at.blank?
 
-      scope = diary.schedulings.where(date: date)
+      scope = diary.schedulings.active.where(date: date)
       scope = scope.where.not(id: id) if persisted?
 
       scope.find_each do |other|
@@ -162,6 +164,7 @@ class Scheduling < ApplicationRecord
     def overlaps_with?(other, start_at, end_at)
       return false if other.time.blank?
       return false if other.cancelled?
+      return false if other.soft_deleted?
       return false if other.session_duration_minutes.blank?
 
       other_start = time_on_date(other.time)

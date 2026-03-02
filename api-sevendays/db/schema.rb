@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_27_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_02_173000) do
   create_table "addresses", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.string "address", null: false
     t.string "city", null: false
@@ -56,12 +56,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_27_200000) do
     t.bigint "diary_id", null: false
     t.bigint "scheduling_rule_id", null: false
     t.integer "session_duration_minutes", default: 60, null: false
+    t.boolean "soft_deleted", default: false, null: false
     t.string "status", default: "available", null: false
     t.time "time", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["diary_id"], name: "index_schedulings_on_diary_id"
     t.index ["scheduling_rule_id"], name: "index_schedulings_on_scheduling_rule_id"
+    t.index ["soft_deleted"], name: "index_schedulings_on_soft_deleted"
     t.index ["user_id"], name: "index_schedulings_on_user_id"
   end
 

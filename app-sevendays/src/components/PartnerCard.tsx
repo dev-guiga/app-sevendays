@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AvatarProfile from "@/components/Avatar";
+import { Button } from "@/components/ui/button";
 import {
   Pagination,
   PaginationContent,
@@ -12,11 +13,12 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sevendaysapi } from "@/lib/sevendaysapi";
-import { Info, MapPin, UserCircle } from "@phosphor-icons/react";
+import { Info, MagnifyingGlass, MapPin, UserCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
@@ -109,6 +111,8 @@ export default function PartnersCard() {
   const [totalCount, setTotalCount] = useState(0);
   const [hasPrev, setHasPrev] = useState(false);
   const [hasNext, setHasNext] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [appliedSearchText, setAppliedSearchText] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -121,6 +125,7 @@ export default function PartnersCard() {
         params: {
           page: currentPage,
           per_page: PER_PAGE,
+          ...(appliedSearchText ? { query: appliedSearchText } : {}),
         },
       });
 
@@ -163,7 +168,7 @@ export default function PartnersCard() {
     return () => {
       ignore = true;
     };
-  }, [currentPage]);
+  }, [appliedSearchText, currentPage]);
 
   const paginationItems = useMemo(
     () => buildPaginationItems(currentPage, totalPages),
@@ -182,7 +187,27 @@ export default function PartnersCard() {
 
   return (
     <div className="w-full max-w-7xl flex flex-col items-start justify-center gap-10 sm:mx-auto mx-0 px-4 p-15">
-      <h1 className="text-2xl font-bold">Escolha a agenda que deseja acessar</h1>
+      <div className="w-full flex flex-col gap-3">
+        <h1 className="text-2xl font-bold">Escolha a agenda que deseja acessar</h1>
+        <form
+          className="w-full flex items-center gap-2 sm:max-w-md"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setAppliedSearchText(searchText.trim());
+            setCurrentPage(1);
+          }}
+        >
+          <Input
+            placeholder="Buscar agenda por nome ou e-mail"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            className="w-full"
+          />
+          <Button type="submit" className="h-10 w-10 shrink-0 p-0" aria-label="Pesquisar agenda">
+            <MagnifyingGlass size={16} />
+          </Button>
+        </form>
+      </div>
 
       {isLoading ? (
         <div className="w-full grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

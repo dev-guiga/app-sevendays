@@ -26,6 +26,10 @@ RSpec.describe SchedulingsController, type: :controller do
   end
 
   describe "routing" do
+    it "routes GET /api/user/schedulings to schedulings#my_schedulings" do
+      expect(get: "/api/user/schedulings").to route_to("schedulings#my_schedulings", format: :json)
+    end
+
     it "routes GET /api/sidebar/schedulings to schedulings#sidebar" do
       expect(get: "/api/sidebar/schedulings").to route_to("schedulings#sidebar", format: :json)
     end
@@ -452,6 +456,153 @@ RSpec.describe SchedulingsController, type: :controller do
     end
   end
 
+  describe "#my_schedulings" do
+    around do |example|
+      travel_to(Time.zone.local(2026, 1, 5, 9, 0, 0)) { example.run }
+    end
+
+    let(:other_owner) { create_user!(status: "owner", email: "other-owner@example.com") }
+    let(:other_diary) { create_diary!(user: other_owner) }
+    let(:other_scheduling_rule) { create_scheduling_rule!(user: other_owner, diary: other_diary) }
+
+    let!(:older_marked_scheduling) do
+      Scheduling.create!(
+        scheduling_attributes(
+          user: user,
+          diary: diary,
+          rule: scheduling_rule,
+          overrides: {
+            date: Date.current + 2.days,
+            time: "10:00",
+            status: "marked",
+            description: "Descricao antiga marcada",
+            created_at: Time.current - 2.days,
+            updated_at: Time.current - 2.days
+          }
+        )
+      )
+    end
+
+    let!(:newer_marked_scheduling) do
+      Scheduling.create!(
+        scheduling_attributes(
+          user: user,
+          diary: other_diary,
+          rule: other_scheduling_rule,
+          overrides: {
+            date: Date.current + 3.days,
+            time: "11:00",
+            status: "marked",
+            description: "Descricao nova marcada",
+            created_at: Time.current - 1.day,
+            updated_at: Time.current - 1.day
+          }
+        )
+      )
+    end
+
+    let!(:cancelled_scheduling) do
+      Scheduling.create!(
+        scheduling_attributes(
+          user: user,
+          diary: diary,
+          rule: scheduling_rule,
+          overrides: {
+            date: Date.current + 4.days,
+            time: "12:00",
+            status: "cancelled",
+            description: "Descricao cancelada usuario",
+            created_at: Time.current - 1.hour,
+            updated_at: Time.current - 1.hour
+          }
+        )
+      )
+    end
+
+    let!(:other_user_marked_scheduling) do
+      Scheduling.create!(
+        scheduling_attributes(
+          user: other_user,
+          diary: diary,
+          rule: scheduling_rule,
+          overrides: {
+            date: Date.current + 5.days,
+            time: "13:00",
+            status: "marked",
+            description: "Descricao de outro usuario",
+            created_at: Time.current - 30.minutes,
+            updated_at: Time.current - 30.minutes
+          }
+        )
+      )
+    end
+
+    context "when authorized" do
+      before do
+        sign_in(user)
+        scheduling_rule
+        other_scheduling_rule
+      end
+
+      it "returns marked schedulings with pagination and professional data" do
+        get :my_schedulings, params: { page: 1, per_page: 1 }, format: :json
+
+        expect(response).to have_http_status(:ok)
+        body = response.parsed_body
+
+        expect(body["success"]).to eq(true)
+        expect(body["schedulings"].size).to eq(1)
+        expect(body["schedulings"].first["id"]).to eq(newer_marked_scheduling.id)
+        expect(body["schedulings"].first["diary_title"]).to eq(other_diary.title)
+        expect(body["schedulings"].first["professional_name"]).to eq(other_owner.full_name)
+        expect(body["schedulings"].first["professional_email"]).to eq(other_owner.email)
+
+        pagination = body["pagination"]
+        expect(pagination["page"]).to eq(1)
+        expect(pagination["per_page"]).to eq(1)
+        expect(pagination["total_count"]).to eq(2)
+        expect(pagination["total_pages"]).to eq(2)
+        expect(pagination["has_prev"]).to eq(false)
+        expect(pagination["has_next"]).to eq(true)
+      end
+
+      it "filters by query, date range, status and order" do
+        get :my_schedulings, params: {
+          query: other_owner.email,
+          date_from: (Date.current + 3.days).to_s,
+          date_to: (Date.current + 3.days).to_s,
+          status: "marked",
+          created_at_order: "asc"
+        }, format: :json
+
+        expect(response).to have_http_status(:ok)
+        body = response.parsed_body
+
+        expect(body["success"]).to eq(true)
+        expect(body["schedulings"].map { |item| item["id"] }).to eq([ newer_marked_scheduling.id ])
+        expect(body["pagination"]["total_count"]).to eq(1)
+      end
+    end
+
+    context "when current user is owner" do
+      before { sign_in(owner) }
+
+      it "returns forbidden" do
+        get :my_schedulings, format: :json
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "when unauthenticated" do
+      it "returns unauthorized" do
+        get :my_schedulings, format: :json
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
   describe "#show" do
     let!(:scheduling) {
       Scheduling.create!(
@@ -729,6 +880,7 @@ RSpec.describe SchedulingsController, type: :controller do
 
         scheduling.reload
         expect(scheduling).to be_cancelled
+        expect(scheduling.soft_deleted).to eq(true)
       end
     end
 
