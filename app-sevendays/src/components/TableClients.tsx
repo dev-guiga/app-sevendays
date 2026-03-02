@@ -4,6 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DatePickerSimple } from "@/components/DatePickerSimple";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -28,9 +35,10 @@ import { CaretDown, MagnifyingGlass } from "@phosphor-icons/react";
 import { addDays, format } from "date-fns";
 import { toast } from "sonner";
 
-type OwnerSchedulingStatus = "available" | "marked" | "cancelled";
+type OwnerSchedulingStatus = "available" | "marked" | "pending" | "cancelled";
+type OwnerSchedulingFilterStatus = "all" | "marked" | "pending" | "cancelled";
 type SortDirection = "asc" | "desc";
-type SortField = "user_name" | "user_email" | "date" | "time" | "status";
+type SortField = "user_name" | "user_email" | "date" | "time";
 
 type OwnerScheduling = {
   id: number;
@@ -59,6 +67,7 @@ const PER_PAGE = 20;
 const SKELETON_ROWS = 20;
 const DEFAULT_SORT_FIELD: SortField = "date";
 const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
+const DEFAULT_STATUS_FILTER: OwnerSchedulingFilterStatus = "all";
 
 function buildDefaultStartDate() {
   return new Date();
@@ -106,6 +115,10 @@ function getStatusLabel(status?: OwnerSchedulingStatus) {
     return "agendado";
   }
 
+  if (status === "pending") {
+    return "pendente";
+  }
+
   if (status === "cancelled") {
     return "cancelado";
   }
@@ -117,20 +130,24 @@ function getStatusLabel(status?: OwnerSchedulingStatus) {
   return "desconhecido";
 }
 
-function getStatusClassName(status?: OwnerSchedulingStatus) {
+function getStatusDotClassName(status?: OwnerSchedulingStatus) {
   if (status === "marked") {
-    return "text-green-500";
+    return "bg-green-500";
+  }
+
+  if (status === "pending") {
+    return "bg-blue-500";
   }
 
   if (status === "cancelled") {
-    return "text-red-500";
+    return "bg-red-500";
   }
 
   if (status === "available") {
-    return "text-amber-500";
+    return "bg-amber-500";
   }
 
-  return "text-muted-foreground";
+  return "bg-muted-foreground";
 }
 
 function buildPaginationItems(currentPage: number, totalPages: number) {
@@ -158,7 +175,11 @@ function buildPaginationItems(currentPage: number, totalPages: number) {
   return items;
 }
 
-export function TableClients() {
+interface TableClientsProps {
+  reloadToken?: number;
+}
+
+export function TableClients({ reloadToken = 0 }: TableClientsProps) {
   const [schedulings, setSchedulings] = useState<OwnerScheduling[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -168,6 +189,9 @@ export function TableClients() {
   const [hasNext, setHasNext] = useState(false);
   const [sortField, setSortField] = useState<SortField>(DEFAULT_SORT_FIELD);
   const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION);
+  const [statusFilter, setStatusFilter] = useState<OwnerSchedulingFilterStatus>(
+    DEFAULT_STATUS_FILTER,
+  );
   const [searchText, setSearchText] = useState("");
   const [appliedSearchText, setAppliedSearchText] = useState("");
   const [startDateFilter, setStartDateFilter] = useState<Date>(buildDefaultStartDate);
@@ -186,6 +210,7 @@ export function TableClients() {
           params: {
             page: currentPage,
             per_page: PER_PAGE,
+            status: statusFilter,
             ...(appliedSearchText ? { query: appliedSearchText } : {}),
             ...(startDateFilter ? { date_from: format(startDateFilter, "yyyy-MM-dd") } : {}),
             ...(endDateFilter ? { date_to: format(endDateFilter, "yyyy-MM-dd") } : {}),
@@ -232,17 +257,11 @@ export function TableClients() {
     return () => {
       ignore = true;
     };
-  }, [appliedSearchText, currentPage, endDateFilter, startDateFilter]);
+  }, [appliedSearchText, currentPage, endDateFilter, reloadToken, startDateFilter, statusFilter]);
 
   const sortedSchedulings = useMemo(() => {
     const items = [ ...schedulings ];
     const factor = sortDirection === "asc" ? 1 : -1;
-
-    const statusOrder: Record<OwnerSchedulingStatus, number> = {
-      available: 0,
-      marked: 1,
-      cancelled: 2,
-    };
 
     const normalizeText = (value?: string) => value?.trim().toLowerCase() ?? "";
     const normalizeDate = (value?: string) => {
@@ -275,12 +294,6 @@ export function TableClients() {
 
       if (sortField === "time") {
         return (normalizeTime(left.time) - normalizeTime(right.time)) * factor;
-      }
-
-      if (sortField === "status") {
-        const leftStatus = left.status ? statusOrder[left.status] : -1;
-        const rightStatus = right.status ? statusOrder[right.status] : -1;
-        return (leftStatus - rightStatus) * factor;
       }
 
       if (sortField === "user_email") {
@@ -386,13 +399,13 @@ export function TableClients() {
         </div>
       </form>
 
-      <Table>
+      <Table className="[&_thead_tr]:border-border [&_tbody_tr]:border-border [&_tbody_td]:text-foreground [&_tbody_td]:text-sm">
         <TableHeader>
           <TableRow>
             <TableHead>
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-foreground"
                 onClick={() => handleSort("user_name")}
               >
                 Nome
@@ -402,7 +415,7 @@ export function TableClients() {
             <TableHead>
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-foreground"
                 onClick={() => handleSort("user_email")}
               >
                 Email
@@ -412,7 +425,7 @@ export function TableClients() {
             <TableHead>
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-foreground"
                 onClick={() => handleSort("date")}
               >
                 Data
@@ -422,7 +435,7 @@ export function TableClients() {
             <TableHead>
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-foreground"
                 onClick={() => handleSort("time")}
               >
                 Hora
@@ -430,14 +443,43 @@ export function TableClients() {
               </button>
             </TableHead>
             <TableHead>
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
-                onClick={() => handleSort("status")}
-              >
-                Status
-                <CaretDown size={12} className={getCaretClassName("status")} />
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-foreground"
+                    aria-label="Filtrar status"
+                  >
+                    Status
+                    <CaretDown size={12} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[var(--radix-dropdown-menu-trigger-width)]"
+                >
+                  <DropdownMenuRadioGroup
+                    value={statusFilter}
+                    onValueChange={(value) => {
+                      setStatusFilter(value as OwnerSchedulingFilterStatus);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <DropdownMenuRadioItem value="all">
+                      Todos
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="marked">
+                      Agendado
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="pending">
+                      Pendente
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="cancelled">
+                      Cancelado
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -480,10 +522,15 @@ export function TableClients() {
                     <TableCell>{scheduling.user_email || "-"}</TableCell>
                     <TableCell>{formatDate(scheduling.date)}</TableCell>
                     <TableCell>{formatTime(scheduling.time)}</TableCell>
-                    <TableCell
-                      className={`capitalize ${getStatusClassName(scheduling.status)}`}
-                    >
-                      {getStatusLabel(scheduling.status)}
+                    <TableCell className="text-foreground">
+                      <div className="inline-flex items-center gap-2">
+                        <span
+                          className={`inline-block h-1 w-1 rounded-full ${getStatusDotClassName(scheduling.status)}`}
+                        />
+                        <span className="text-sm capitalize text-foreground">
+                          {getStatusLabel(scheduling.status)}
+                        </span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

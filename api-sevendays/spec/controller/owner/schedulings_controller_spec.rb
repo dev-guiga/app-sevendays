@@ -35,6 +35,10 @@ RSpec.describe Owner::SchedulingsController, type: :controller do
       expect(get: "/api/owner/diary/schedulings").to route_to("owner/schedulings#index", format: :json)
     end
 
+    it "routes GET /api/owner/diary/schedulings/days to owner/schedulings#days" do
+      expect(get: "/api/owner/diary/schedulings/days").to route_to("owner/schedulings#days", format: :json)
+    end
+
     it "routes PATCH /api/owner/diary/schedulings/:id to owner/schedulings#update" do
       expect(patch: "/api/owner/diary/schedulings/1").to route_to("owner/schedulings#update", id: "1", format: :json)
     end
@@ -160,6 +164,34 @@ RSpec.describe Owner::SchedulingsController, type: :controller do
       end
     end
 
+    context "when there is a pending scheduling for the same slot" do
+      before do
+        sign_in(owner)
+        scheduling_rule
+
+        pending_scheduling = Scheduling.create!(
+          scheduling_attributes(
+            user: user,
+            diary: diary,
+            rule: scheduling_rule,
+            overrides: {
+              date: scheduled_at.to_date,
+              time: scheduled_at.strftime("%H:%M"),
+              status: "marked"
+            }
+          )
+        )
+
+        pending_scheduling.update_columns(status: "pending")
+      end
+
+      it "returns unprocessable entity" do
+        post :create, params: scheduling_params, format: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+
     context "when current user is not owner" do
       let(:non_owner) { create_user!(status: "user") }
       let!(:non_owner_diary) { create_diary!(user: non_owner) }
@@ -188,6 +220,46 @@ RSpec.describe Owner::SchedulingsController, type: :controller do
     context "when unauthenticated" do
       it "returns unauthorized" do
         post :create, params: scheduling_params, format: :json
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
+  describe "#days" do
+    context "when authorized" do
+      before do
+        sign_in(owner)
+        scheduling_rule
+      end
+
+      it "returns available slots for the selected day" do
+        get :days, params: { date: scheduled_at.to_date.to_s }, format: :json
+
+        expect(response).to have_http_status(:ok)
+        body = response.parsed_body
+        expect(body["success"]).to eq(true)
+        expect(body["date"]).to eq(scheduled_at.to_date.to_s)
+        expect(body["available_slots"]).to be_an(Array)
+      end
+    end
+
+    context "when date is invalid" do
+      before do
+        sign_in(owner)
+        scheduling_rule
+      end
+
+      it "returns unprocessable entity" do
+        get :days, params: { date: "invalid-date" }, format: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+
+    context "when unauthenticated" do
+      it "returns unauthorized" do
+        get :days, params: { date: scheduled_at.to_date.to_s }, format: :json
 
         expect(response).to have_http_status(:unauthorized)
       end

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AvatarProfile from "@/components/Avatar";
+import { OwnerCreateSchedulingModal } from "@/components/OwnerCreateSchedulingModal";
 import {
   OwnerProfileEditModal,
   type OwnerProfileUpdateInput,
@@ -70,6 +71,7 @@ export default function HomeAdmin() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [schedulingsReloadToken, setSchedulingsReloadToken] = useState(0);
 
   const routeOwnerId = Number(params?.admin);
 
@@ -257,8 +259,13 @@ export default function HomeAdmin() {
       </div>
 
       <div className="w-full flex flex-col gap-7 pb-10 overflow-hidden">
-        <h1 className="text-3xl text-primary/90 font-bold">Lista de agendamento</h1>
-        <TableClients />
+        <div className="w-full flex items-center justify-between gap-3">
+          <h1 className="text-3xl text-primary/90 font-bold">Lista de agendamento</h1>
+          <OwnerCreateSchedulingModal
+            onCreated={() => setSchedulingsReloadToken((previous) => previous + 1)}
+          />
+        </div>
+        <TableClients reloadToken={schedulingsReloadToken} />
       </div>
 
       <OwnerProfileEditModal

@@ -18,7 +18,9 @@ Rails.application.routes.draw do
       get "sidebar/schedulings", to: "schedulings#sidebar"
 
       resource :diary, only: [ :create, :show, :update ], controller: "diaries" do
-        resources :schedulings, only: [ :index, :create, :update, :destroy ]
+        resources :schedulings, only: [ :index, :create, :update, :destroy ] do
+          get :days, on: :collection
+        end
         resource :scheduling_rule, only: [ :show, :create, :update, :destroy ], controller: "scheduling_rules"
       end
     end

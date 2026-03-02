@@ -12,7 +12,12 @@ class Scheduling < ApplicationRecord
   validates :description, presence: true, length: { minimum: 10, maximum: 1000 }
   validates :status, presence: true
 
-  enum :status, { available: "available", marked: "marked", cancelled: "cancelled" }
+  enum :status, {
+    available: "available",
+    marked: "marked",
+    pending: "pending",
+    cancelled: "cancelled"
+  }
 
   scope :active, -> { where(soft_deleted: false) }
 

@@ -54,6 +54,19 @@ class Owner::SchedulingsController < ApplicationController
     end
   end
 
+  def days
+    return if performed?
+
+    authorize @diary, :schedule?
+
+    @day = params[:date].present? ? Date.strptime(params[:date], "%Y-%m-%d") : Date.current
+    @available_slots = @diary.available_slots_for(@day)
+
+    render :days, status: :ok
+  rescue ArgumentError
+    render_error(code: "invalid_date", message: "Invalid date", status: :unprocessable_entity)
+  end
+
   def update
     return if performed?
 
@@ -185,6 +198,7 @@ class Owner::SchedulingsController < ApplicationController
 
   def filter_by_status(scope)
     status = params[:status].to_s.strip.downcase
+    return scope if status == "all"
     return scope.marked if status.blank?
     return scope.none unless Scheduling.statuses.key?(status)
 

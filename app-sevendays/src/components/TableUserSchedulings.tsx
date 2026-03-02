@@ -43,7 +43,7 @@ import { CaretDown, MagnifyingGlass, Trash } from "@phosphor-icons/react";
 import { addDays, format } from "date-fns";
 import { toast } from "sonner";
 
-type UserSchedulingStatus = "available" | "marked" | "cancelled";
+type UserSchedulingStatus = "available" | "marked" | "pending" | "cancelled";
 type UserSchedulingFilterStatus = "all" | "marked" | "cancelled";
 type SortDirection = "asc" | "desc";
 type SortField = "professional_name" | "diary_title" | "date" | "time";
@@ -128,6 +128,10 @@ function getStatusLabel(status?: UserSchedulingStatus) {
     return "agendado";
   }
 
+  if (status === "pending") {
+    return "pendente";
+  }
+
   if (status === "cancelled") {
     return "cancelado";
   }
@@ -142,6 +146,10 @@ function getStatusLabel(status?: UserSchedulingStatus) {
 function getStatusDotClassName(status?: UserSchedulingStatus) {
   if (status === "marked") {
     return "bg-green-500";
+  }
+
+  if (status === "pending") {
+    return "bg-blue-500";
   }
 
   if (status === "cancelled") {
