@@ -119,6 +119,8 @@ class Owner::SchedulingsController < ApplicationController
       .includes(:user)
       .joins(:user)
 
+    scope = filter_by_query(scope)
+    scope = filter_by_date_range(scope)
     scope = filter_by_name(scope)
     scope = filter_by_email(scope)
     scope = filter_by_date(scope)
@@ -144,6 +146,28 @@ class Owner::SchedulingsController < ApplicationController
     scope.where("users.email LIKE ?", search_term)
   end
 
+  def filter_by_query(scope)
+    query = params[:query].to_s.strip
+    return scope if query.blank?
+
+    search_term = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
+    scope.where(
+      "CONCAT(users.first_name, ' ', users.last_name) LIKE :term OR users.email LIKE :term",
+      term: search_term
+    )
+  end
+
+  def filter_by_date_range(scope)
+    start_date = parse_date_param(params[:date_from])
+    end_date = parse_date_param(params[:date_to])
+    return scope if start_date.blank? && end_date.blank?
+
+    return scope.where(date: [ start_date, end_date ].min..[ start_date, end_date ].max) if start_date && end_date
+    return scope.where("schedulings.date >= ?", start_date) if start_date
+
+    scope.where("schedulings.date <= ?", end_date)
+  end
+
   def filter_by_date(scope)
     date = parsed_date_filter
     return scope if date.blank?
@@ -167,13 +191,7 @@ class Owner::SchedulingsController < ApplicationController
   end
 
   def parsed_date_filter
-    raw_date = params[:date].to_s.strip
-    return if raw_date.blank?
-    return unless raw_date.match?(/\A\d{4}-\d{2}-\d{2}\z/)
-
-    Date.iso8601(raw_date)
-  rescue ArgumentError
-    nil
+    parse_date_param(params[:date])
   end
 
   def normalized_time_filter
@@ -197,6 +215,16 @@ class Owner::SchedulingsController < ApplicationController
     return :asc if normalized_order == "asc"
 
     :desc
+  end
+
+  def parse_date_param(raw_value)
+    value = raw_value.to_s.strip
+    return if value.blank?
+    return unless value.match?(/\A\d{4}-\d{2}-\d{2}\z/)
+
+    Date.iso8601(value)
+  rescue ArgumentError
+    nil
   end
 
   def scheduling_params

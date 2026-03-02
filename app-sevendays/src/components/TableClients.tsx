@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { DatePickerWithRange } from "@/components/DatePickerWithRange";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -21,9 +24,14 @@ import {
 } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sevendaysapi } from "@/lib/sevendaysapi";
+import { CaretDown, MagnifyingGlass } from "@phosphor-icons/react";
+import { addDays, format } from "date-fns";
 import { toast } from "sonner";
+import { type DateRange } from "react-day-picker";
 
 type OwnerSchedulingStatus = "available" | "marked" | "cancelled";
+type SortDirection = "asc" | "desc";
+type SortField = "user_name" | "user_email" | "date" | "time" | "status";
 
 type OwnerScheduling = {
   id: number;
@@ -50,6 +58,17 @@ type PaginatedOwnerSchedulingsResponse = {
 
 const PER_PAGE = 20;
 const SKELETON_ROWS = 20;
+const DEFAULT_SORT_FIELD: SortField = "date";
+const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
+
+function buildDefaultDateRange(): DateRange {
+  const today = new Date();
+
+  return {
+    from: today,
+    to: addDays(today, 30),
+  };
+}
 
 function formatDate(value?: string) {
   if (!value) {
@@ -149,6 +168,11 @@ export function TableClients() {
   const [totalCount, setTotalCount] = useState(0);
   const [hasPrev, setHasPrev] = useState(false);
   const [hasNext, setHasNext] = useState(false);
+  const [sortField, setSortField] = useState<SortField>(DEFAULT_SORT_FIELD);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION);
+  const [searchText, setSearchText] = useState("");
+  const [appliedSearchText, setAppliedSearchText] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(buildDefaultDateRange);
 
   useEffect(() => {
     let ignore = false;
@@ -163,6 +187,9 @@ export function TableClients() {
           params: {
             page: currentPage,
             per_page: PER_PAGE,
+            ...(appliedSearchText ? { query: appliedSearchText } : {}),
+            ...(dateRange?.from ? { date_from: format(dateRange.from, "yyyy-MM-dd") } : {}),
+            ...(dateRange?.to ? { date_to: format(dateRange.to, "yyyy-MM-dd") } : {}),
           },
         },
       );
@@ -206,7 +233,66 @@ export function TableClients() {
     return () => {
       ignore = true;
     };
-  }, [currentPage]);
+  }, [appliedSearchText, currentPage, dateRange]);
+
+  const sortedSchedulings = useMemo(() => {
+    const items = [ ...schedulings ];
+    const factor = sortDirection === "asc" ? 1 : -1;
+
+    const statusOrder: Record<OwnerSchedulingStatus, number> = {
+      available: 0,
+      marked: 1,
+      cancelled: 2,
+    };
+
+    const normalizeText = (value?: string) => value?.trim().toLowerCase() ?? "";
+    const normalizeDate = (value?: string) => {
+      if (!value) {
+        return "";
+      }
+
+      const isoDateMatch = value.match(/^\d{4}-\d{2}-\d{2}$/);
+      return isoDateMatch ? value : value.slice(0, 10);
+    };
+    const normalizeTime = (value?: string) => {
+      if (!value) {
+        return -1;
+      }
+
+      const match = value.match(/(\d{2}):(\d{2})/);
+      if (!match) {
+        return -1;
+      }
+
+      return Number(match[1]) * 60 + Number(match[2]);
+    };
+
+    items.sort((left, right) => {
+      if (sortField === "date") {
+        const leftValue = normalizeDate(left.date);
+        const rightValue = normalizeDate(right.date);
+        return leftValue.localeCompare(rightValue) * factor;
+      }
+
+      if (sortField === "time") {
+        return (normalizeTime(left.time) - normalizeTime(right.time)) * factor;
+      }
+
+      if (sortField === "status") {
+        const leftStatus = left.status ? statusOrder[left.status] : -1;
+        const rightStatus = right.status ? statusOrder[right.status] : -1;
+        return (leftStatus - rightStatus) * factor;
+      }
+
+      if (sortField === "user_email") {
+        return normalizeText(left.user_email).localeCompare(normalizeText(right.user_email)) * factor;
+      }
+
+      return normalizeText(left.user_name).localeCompare(normalizeText(right.user_name)) * factor;
+    });
+
+    return items;
+  }, [schedulings, sortDirection, sortField]);
 
   const paginationItems = useMemo(
     () => buildPaginationItems(currentPage, totalPages),
@@ -221,18 +307,113 @@ export function TableClients() {
     setCurrentPage(page);
   };
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((previous) => (previous === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortField(field);
+    setSortDirection("asc");
+  };
+
+  const getCaretClassName = (field: SortField) => {
+    const isActive = sortField === field;
+    const directionClass = isActive && sortDirection === "asc" ? "rotate-180" : "rotate-0";
+
+    return `transition-transform ${directionClass} ${isActive ? "opacity-100" : "opacity-45"}`;
+  };
+
   const isEmptyState = !isLoading && schedulings.length === 0;
 
   return (
     <div className="w-full flex flex-col gap-4">
+      <form
+        className="w-full flex items-center gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setAppliedSearchText(searchText.trim());
+          setCurrentPage(1);
+        }}
+      >
+        <Input
+          placeholder="Buscar por nome ou e-mail"
+          value={searchText}
+          onChange={(event) => setSearchText(event.target.value)}
+          className="max-w-md"
+        />
+        <Button type="submit" className="px-3">
+          <MagnifyingGlass size={16} />
+        </Button>
+        <DatePickerWithRange
+          className="w-auto"
+          value={dateRange}
+          onChange={(nextDateRange) => {
+            if (!nextDateRange) {
+              setDateRange(buildDefaultDateRange());
+              setCurrentPage(1);
+              return;
+            }
+
+            setDateRange(nextDateRange);
+            setCurrentPage(1);
+          }}
+        />
+      </form>
+
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Nome</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Data</TableHead>
-            <TableHead>Hora</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                onClick={() => handleSort("user_name")}
+              >
+                Nome
+                <CaretDown size={12} className={getCaretClassName("user_name")} />
+              </button>
+            </TableHead>
+            <TableHead>
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                onClick={() => handleSort("user_email")}
+              >
+                Email
+                <CaretDown size={12} className={getCaretClassName("user_email")} />
+              </button>
+            </TableHead>
+            <TableHead>
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                onClick={() => handleSort("date")}
+              >
+                Data
+                <CaretDown size={12} className={getCaretClassName("date")} />
+              </button>
+            </TableHead>
+            <TableHead>
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                onClick={() => handleSort("time")}
+              >
+                Hora
+                <CaretDown size={12} className={getCaretClassName("time")} />
+              </button>
+            </TableHead>
+            <TableHead>
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                onClick={() => handleSort("status")}
+              >
+                Status
+                <CaretDown size={12} className={getCaretClassName("status")} />
+              </button>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -261,12 +442,12 @@ export function TableClients() {
                   <TableRow>
                     <TableCell colSpan={5} className="p-0">
                       <div className="h-[700px] w-full flex items-center justify-center">
-                        <p className="text-muted-foreground">Sem horários agendados.</p>
+                        <p className="text-muted-foreground">Sem horários para os filtros aplicados.</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 )
-              : schedulings.map((scheduling) => (
+              : sortedSchedulings.map((scheduling) => (
                   <TableRow key={scheduling.id}>
                     <TableCell className="font-medium">
                       {scheduling.user_name || "Paciente"}

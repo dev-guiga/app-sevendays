@@ -189,7 +189,7 @@ export default function HomeAdmin() {
           <div className="relative flex flex-col items-start gap-2 w-full">
             <button
               type="button"
-              className="absolute top-0 right-0 z-10 rounded-full bg-transparent text-primary p-2 hover:bg-accent disabled:opacity-50"
+              className="absolute top-0 right-0 rounded-full bg-transparent text-primary p-2 hover:bg-accent disabled:opacity-50"
               aria-label="Editar informações do perfil"
               onClick={() => setIsEditModalOpen(true)}
               disabled={isLoading}
