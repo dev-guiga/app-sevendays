@@ -12,6 +12,7 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { useUser } from "@/contexts/user-context";
 import { sevendaysapi } from "@/lib/sevendaysapi";
 
 import Link from "next/link";
@@ -28,14 +29,6 @@ type LoginPayload = {
 
 type LoginResponse = {
   message: string;
-};
-
-type CurrentUserResponse = {
-  user?: {
-    id?: number;
-    username?: string;
-    status?: "user" | "owner";
-  };
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -70,6 +63,7 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"form">) {
   const router = useRouter();
+  const { refreshCurrentUser } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -106,24 +100,10 @@ export function LoginForm({
       return;
     }
 
-    const currentUserResult = await sevendaysapi.get<CurrentUserResponse>(
-      "/user",
-      {
-        withCredentials: true,
-      },
-    );
+    const currentUser = await refreshCurrentUser({ silent: false });
 
-    if (currentUserResult.error || currentUserResult.statusCode !== 200) {
-      toast.error("Login realizado, mas nao foi possivel carregar o usuario.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    const currentUser = currentUserResult.data?.user;
     if (!currentUser) {
-      toast.error(
-        "Login realizado, mas faltam dados do usuario para redirecionar.",
-      );
+      toast.error("Login realizado, mas nao foi possivel carregar o usuario.");
       setIsSubmitting(false);
       return;
     }
@@ -138,7 +118,7 @@ export function LoginForm({
 
       destination = `/admin/${currentUser.id}/dashboard`;
     } else {
-      if (!currentUser.username) {
+      if (!currentUser.id) {
         toast.error(
           "Login realizado, mas faltam dados do usuario para redirecionar.",
         );
@@ -146,7 +126,7 @@ export function LoginForm({
         return;
       }
 
-      destination = `/${currentUser.username}/portal`;
+      destination = `/${currentUser.id}/portal`;
     }
 
     toast.success("Login realizado com sucesso.");

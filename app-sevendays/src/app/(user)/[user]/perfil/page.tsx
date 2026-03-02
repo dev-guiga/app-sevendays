@@ -82,9 +82,11 @@ export default function UserProfilePage() {
   const params = useParams<{ user?: string | string[] }>();
   const router = useRouter();
 
-  const routeUsername = Array.isArray(params?.user)
+  const routeUserId = Number(
+    Array.isArray(params?.user)
     ? params.user[0]
-    : params?.user;
+    : params?.user,
+  );
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -149,11 +151,10 @@ export default function UserProfilePage() {
       }
 
       if (
-        currentUser.username &&
-        routeUsername &&
-        currentUser.username !== routeUsername
+        currentUser.id &&
+        (!Number.isFinite(routeUserId) || routeUserId !== currentUser.id)
       ) {
-        router.replace(`/${currentUser.username}/perfil`);
+        router.replace(`/${currentUser.id}/perfil`);
       }
 
       setProfile(currentUser);
@@ -165,7 +166,7 @@ export default function UserProfilePage() {
     return () => {
       ignore = true;
     };
-  }, [routeUsername, router]);
+  }, [routeUserId, router]);
 
   return (
     <div className="w-full max-w-7xl flex flex-col items-start justify-start gap-10 sm:mx-auto mx-0 px-4">

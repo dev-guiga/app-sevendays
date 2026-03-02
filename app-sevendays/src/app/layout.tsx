@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { UserAccessGuard, UserProvider } from "@/contexts/user-context";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
@@ -35,10 +36,12 @@ export default function RootLayout({
         className={`${interFont.variable} ${rationale.variable} antialiased relative [&::-webkit-scrollbar]:hidden`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <Header />
-          {children}
-          <Toaster />
-          <Footer />
+          <UserProvider>
+            <Header />
+            <UserAccessGuard>{children}</UserAccessGuard>
+            <Toaster />
+            <Footer />
+          </UserProvider>
         </ThemeProvider>
       </body>
     </html>

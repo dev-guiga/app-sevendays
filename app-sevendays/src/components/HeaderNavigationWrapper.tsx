@@ -62,10 +62,10 @@ function OwnerNavigation({ ownerId }: { ownerId: number }) {
   );
 }
 
-function UserNavigation({ username }: { username: string }) {
+function UserNavigation({ userId }: { userId: number }) {
   const pathname = usePathname();
-  const portalPath = `/${username}/portal`;
-  const profilePath = `/${username}/perfil`;
+  const portalPath = `/${userId}/portal`;
+  const profilePath = `/${userId}/perfil`;
   const isPortalActive = pathname === portalPath || /\/portal(\/|$)/.test(pathname);
   const isProfileActive = pathname === profilePath || /\/perfil(\/|$)/.test(pathname);
 
@@ -115,14 +115,14 @@ export function HeaderNavigationWrapper({
   }
 
   const isOwner = currentUser?.status === "owner" && Boolean(currentUser?.id);
-  const isUser = Boolean(currentUser?.username) && currentUser?.status !== "owner";
+  const isUser = Boolean(currentUser?.id) && currentUser?.status !== "owner";
 
   return (
     <nav className="w-full flex items-end gap-6 overflow-x-auto [&::-webkit-scrollbar]:hidden">
       {isOwner ? (
         <OwnerNavigation ownerId={Number(currentUser?.id)} />
       ) : isUser ? (
-        <UserNavigation username={String(currentUser?.username)} />
+        <UserNavigation userId={Number(currentUser?.id)} />
       ) : (
         <PublicNavigation />
       )}
