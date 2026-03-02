@@ -29,7 +29,7 @@ type CreateSchedulingResponse = {
   status?: string;
 };
 
-type CreateSchedulingPayload = {
+type DefaultCreateSchedulingPayload = {
   scheduling: {
     date: string;
     time: string;
@@ -38,7 +38,21 @@ type CreateSchedulingPayload = {
 };
 
 type Calendar20Props = {
-  diaryId: number;
+  diaryId?: number;
+  daysEndpoint?: string;
+  createEndpoint?: string;
+  buildCreatePayload?: (params: { date: string; time: string }) => unknown;
+  confirmButtonLabel?: string;
+  isConfirmDisabled?: boolean;
+  successMessage?: string;
+  createErrorMessage?: string;
+  onCreateSuccess?: () => void;
+  isOwnerScheduling?: boolean;
+  submitRequestToken?: number;
+  onCreateStateChange?: (state: {
+    canSubmit: boolean;
+    isSubmitting: boolean;
+  }) => void;
 };
 
 function extractApiErrorMessage(error: unknown, fallback: string) {
@@ -70,20 +84,42 @@ function formatDateForApi(date: Date) {
   return format(date, "yyyy-MM-dd");
 }
 
-export default function Calendar20({ diaryId }: Calendar20Props) {
+export default function Calendar20({
+  diaryId,
+  daysEndpoint,
+  createEndpoint,
+  buildCreatePayload,
+  confirmButtonLabel,
+  isConfirmDisabled = false,
+  successMessage = "Agendamento confirmado com sucesso.",
+  createErrorMessage = "Nao foi possivel confirmar o agendamento.",
+  onCreateSuccess,
+  isOwnerScheduling = false,
+  submitRequestToken,
+  onCreateStateChange,
+}: Calendar20Props) {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = React.useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = React.useState<AvailableSlot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const previousSubmitTokenRef = React.useRef<number | undefined>(submitRequestToken);
 
   const selectedDateApi = React.useMemo(
     () => (date ? formatDateForApi(date) : null),
     [date],
   );
+  const resolvedDaysEndpoint = React.useMemo(
+    () => daysEndpoint ?? (diaryId ? `/diaries/${diaryId}/days` : null),
+    [daysEndpoint, diaryId],
+  );
+  const resolvedCreateEndpoint = React.useMemo(
+    () => createEndpoint ?? (diaryId ? `/diaries/${diaryId}/schedulings` : null),
+    [createEndpoint, diaryId],
+  );
 
   const loadAvailableSlots = React.useCallback(async () => {
-    if (!selectedDateApi) {
+    if (!selectedDateApi || !resolvedDaysEndpoint) {
       setAvailableSlots([]);
       setSelectedTime(null);
       return;
@@ -92,7 +128,7 @@ export default function Calendar20({ diaryId }: Calendar20Props) {
     setIsLoadingSlots(true);
 
     const result = await sevendaysapi.get<DiaryDaysResponse>(
-      `/diaries/${diaryId}/days`,
+      resolvedDaysEndpoint,
       {
         withCredentials: true,
         params: {
@@ -134,46 +170,86 @@ export default function Calendar20({ diaryId }: Calendar20Props) {
     });
 
     setIsLoadingSlots(false);
-  }, [diaryId, selectedDateApi]);
+  }, [resolvedDaysEndpoint, selectedDateApi]);
 
   React.useEffect(() => {
     void loadAvailableSlots();
   }, [loadAvailableSlots]);
 
   const handleCreateScheduling = React.useCallback(async () => {
-    if (!date || !selectedTime) {
+    if (!date || !selectedTime || !resolvedCreateEndpoint) {
       return false;
     }
 
     setIsSubmitting(true);
 
-    const payload: CreateSchedulingPayload = {
-      scheduling: {
-        date: formatDateForApi(date),
-        time: selectedTime,
-        description: "Agendamento criado via portal do usuario",
-      },
-    };
+    const formattedDate = formatDateForApi(date);
+    const payload: unknown = buildCreatePayload
+      ? buildCreatePayload({
+          date: formattedDate,
+          time: selectedTime,
+        })
+      : ({
+          scheduling: {
+            date: formattedDate,
+            time: selectedTime,
+            description: "Agendamento criado via portal do usuario",
+          },
+        } as DefaultCreateSchedulingPayload);
 
-    const result = await sevendaysapi.post<CreateSchedulingResponse, CreateSchedulingPayload>(
-      `/diaries/${diaryId}/schedulings`,
+    const result = await sevendaysapi.post<CreateSchedulingResponse, unknown>(
+      resolvedCreateEndpoint,
       payload,
       { withCredentials: true },
     );
 
     if (result.error || result.statusCode !== 201 || !result.data?.success) {
       toast.error(
-        extractApiErrorMessage(result.error, "Nao foi possivel confirmar o agendamento."),
+        extractApiErrorMessage(result.error, createErrorMessage),
       );
       setIsSubmitting(false);
       return false;
     }
 
-    toast.success("Agendamento confirmado com sucesso.");
+    toast.success(successMessage);
     setIsSubmitting(false);
     await loadAvailableSlots();
+    onCreateSuccess?.();
     return true;
-  }, [date, diaryId, loadAvailableSlots, selectedTime]);
+  }, [
+    buildCreatePayload,
+    createErrorMessage,
+    date,
+    loadAvailableSlots,
+    onCreateSuccess,
+    resolvedCreateEndpoint,
+    selectedTime,
+    successMessage,
+  ]);
+
+  const canSubmit = Boolean(
+    date && selectedTime && !isLoadingSlots && !isConfirmDisabled && !isSubmitting,
+  );
+
+  React.useEffect(() => {
+    onCreateStateChange?.({
+      canSubmit,
+      isSubmitting,
+    });
+  }, [canSubmit, isSubmitting, onCreateStateChange]);
+
+  React.useEffect(() => {
+    if (!isOwnerScheduling || submitRequestToken === undefined) {
+      return;
+    }
+
+    if (previousSubmitTokenRef.current === submitRequestToken) {
+      return;
+    }
+
+    previousSubmitTokenRef.current = submitRequestToken;
+    void handleCreateScheduling();
+  }, [handleCreateScheduling, isOwnerScheduling, submitRequestToken]);
 
   return (
     <Card className="w-full gap-0 p-0 md:w-fit">
@@ -208,8 +284,8 @@ export default function Calendar20({ diaryId }: Calendar20Props) {
         </div>
 
         <div
-          className="no-scrollbar flex max-h-72 w-full scroll-pb-6 flex-col gap-4 overflow-y-auto border-t p-6 md:max-h-none md:w-56 md:border-t-0 md:border-l"
-          style={{ scrollbarWidth: "thin" }}
+          className="flex max-h-72 w-full scroll-pb-6 flex-col gap-4 overflow-y-auto border-t p-6 md:max-h-none md:w-56 md:border-t-0 md:border-l [&::-webkit-scrollbar]:hidden"
+          style={{ scrollbarWidth: "none" }}
         >
           {isLoadingSlots ? (
             <p className="text-sm text-muted-foreground">Carregando horarios...</p>
@@ -237,33 +313,36 @@ export default function Calendar20({ diaryId }: Calendar20Props) {
         </div>
       </CardContent>
 
-      <CardFooter className="flex flex-col gap-4 border-t px-6 !py-5 md:flex-row md:items-center md:justify-between">
-        <div className="text-sm">
-          {date && selectedTime ? (
-            <>
-              Seu agendamento sera para{" "}
-              <span className="font-medium">
-                {date.toLocaleDateString("pt-BR", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-              </span>{" "}
-              as <span className="font-medium">{selectedTime}</span>.
-            </>
-          ) : (
-            <>Selecione uma data e horario disponiveis.</>
-          )}
-        </div>
+      {isOwnerScheduling ? null : (
+        <CardFooter className="flex flex-col gap-4 border-t px-6 !py-5 md:flex-row md:items-center md:justify-between">
+          <div className="text-sm">
+            {date && selectedTime ? (
+              <>
+                Seu agendamento sera para{" "}
+                <span className="font-medium">
+                  {date.toLocaleDateString("pt-BR", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}
+                </span>{" "}
+                as <span className="font-medium">{selectedTime}</span>.
+              </>
+            ) : (
+              <>Selecione uma data e horario disponiveis.</>
+            )}
+          </div>
 
-        <ConfirmationDateModal
-          date={date}
-          selectedTime={selectedTime}
-          disabled={!date || !selectedTime || isLoadingSlots}
-          isSubmitting={isSubmitting}
-          onConfirm={handleCreateScheduling}
-        />
-      </CardFooter>
+          <ConfirmationDateModal
+            date={date}
+            selectedTime={selectedTime}
+            disabled={!date || !selectedTime || isLoadingSlots || isConfirmDisabled}
+            isSubmitting={isSubmitting}
+            triggerLabel={confirmButtonLabel}
+            onConfirm={handleCreateScheduling}
+          />
+        </CardFooter>
+      )}
     </Card>
   );
 }

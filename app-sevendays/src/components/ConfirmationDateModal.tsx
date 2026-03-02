@@ -18,12 +18,14 @@ export function ConfirmationDateModal({
   selectedTime,
   disabled = false,
   isSubmitting = false,
+  triggerLabel = "Confirmar Agendamento",
   onConfirm,
 }: {
   date: Date | undefined;
   selectedTime: string | null;
   disabled?: boolean;
   isSubmitting?: boolean;
+  triggerLabel?: string;
   onConfirm?: () => Promise<boolean> | boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -45,7 +47,7 @@ export function ConfirmationDateModal({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" disabled={disabled || isSubmitting}>
-          Confirmar Agendamento
+          {triggerLabel}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">

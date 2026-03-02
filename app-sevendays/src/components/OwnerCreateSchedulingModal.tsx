@@ -2,80 +2,19 @@
 
 import * as React from "react";
 
+import Calendar20 from "@/components/calendar-20";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { sevendaysapi } from "@/lib/sevendaysapi";
-import { format } from "date-fns";
-import { toast } from "sonner";
-
-type AvailableSlot = {
-  start_time?: string;
-  end_time?: string;
-};
-
-type OwnerDiaryDaysResponse = {
-  success?: boolean;
-  date?: string;
-  available_slots?: AvailableSlot[];
-};
-
-type OwnerCreateSchedulingResponse = {
-  success?: boolean;
-  user_email?: string;
-  date?: string;
-  time?: string;
-};
-
-type OwnerCreateSchedulingPayload = {
-  scheduling: {
-    user_email: string;
-    date: string;
-    time: string;
-  };
-};
-
-function formatDateForApi(date: Date) {
-  return format(date, "yyyy-MM-dd");
-}
-
-function extractApiErrorMessage(error: unknown, fallback: string) {
-  if (typeof error === "string" && error.trim().length > 0) {
-    return error;
-  }
-
-  if (error && typeof error === "object") {
-    const candidate = error as {
-      error?: {
-        message?: string;
-      };
-      message?: string;
-    };
-
-    if (
-      typeof candidate.error?.message === "string" &&
-      candidate.error.message.trim().length > 0
-    ) {
-      return candidate.error.message;
-    }
-
-    if (typeof candidate.message === "string" && candidate.message.trim().length > 0) {
-      return candidate.message;
-    }
-  }
-
-  return fallback;
-}
+import { XIcon } from "lucide-react";
 
 interface OwnerCreateSchedulingModalProps {
   onCreated?: () => void;
@@ -86,74 +25,9 @@ export function OwnerCreateSchedulingModal({
 }: OwnerCreateSchedulingModalProps) {
   const [open, setOpen] = React.useState(false);
   const [userEmail, setUserEmail] = React.useState("");
-  const [date, setDate] = React.useState<Date | undefined>(new Date());
-  const [selectedTime, setSelectedTime] = React.useState<string | null>(null);
-  const [availableSlots, setAvailableSlots] = React.useState<AvailableSlot[]>([]);
-  const [isLoadingSlots, setIsLoadingSlots] = React.useState(false);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-  const selectedDateApi = React.useMemo(
-    () => (date ? formatDateForApi(date) : null),
-    [date],
-  );
-
-  const loadAvailableSlots = React.useCallback(async () => {
-    if (!open || !selectedDateApi) {
-      setAvailableSlots([]);
-      setSelectedTime(null);
-      return;
-    }
-
-    setIsLoadingSlots(true);
-
-    const result = await sevendaysapi.get<OwnerDiaryDaysResponse>(
-      "/owner/diary/schedulings/days",
-      {
-        withCredentials: true,
-        params: {
-          date: selectedDateApi,
-        },
-      },
-    );
-
-    if (
-      result.error ||
-      result.statusCode !== 200 ||
-      !result.data?.success ||
-      !Array.isArray(result.data.available_slots)
-    ) {
-      toast.error(
-        extractApiErrorMessage(
-          result.error,
-          "Nao foi possivel carregar os horarios disponiveis.",
-        ),
-      );
-      setAvailableSlots([]);
-      setSelectedTime(null);
-      setIsLoadingSlots(false);
-      return;
-    }
-
-    const nextSlots = result.data.available_slots.filter(
-      (slot) => typeof slot.start_time === "string" && slot.start_time.trim().length > 0,
-    );
-    setAvailableSlots(nextSlots);
-
-    setSelectedTime((previous) => {
-      const hasCurrentTime = nextSlots.some((slot) => slot.start_time === previous);
-      if (hasCurrentTime) {
-        return previous;
-      }
-
-      return nextSlots[0]?.start_time ?? null;
-    });
-
-    setIsLoadingSlots(false);
-  }, [open, selectedDateApi]);
-
-  React.useEffect(() => {
-    void loadAvailableSlots();
-  }, [loadAvailableSlots]);
+  const [submitRequestToken, setSubmitRequestToken] = React.useState(0);
+  const [canSubmitScheduling, setCanSubmitScheduling] = React.useState(false);
+  const [isSubmittingScheduling, setIsSubmittingScheduling] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) {
@@ -161,54 +35,12 @@ export function OwnerCreateSchedulingModal({
     }
 
     setUserEmail("");
+    setSubmitRequestToken(0);
+    setCanSubmitScheduling(false);
+    setIsSubmittingScheduling(false);
   }, [open]);
 
-  const isSubmitDisabled =
-    isSubmitting ||
-    isLoadingSlots ||
-    !date ||
-    !selectedTime ||
-    userEmail.trim().length === 0;
-
-  const handleCreateScheduling = async () => {
-    if (isSubmitDisabled || !date || !selectedTime) {
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    const result = await sevendaysapi.post<
-      OwnerCreateSchedulingResponse,
-      OwnerCreateSchedulingPayload
-    >(
-      "/owner/diary/schedulings",
-      {
-        scheduling: {
-          user_email: userEmail.trim(),
-          date: formatDateForApi(date),
-          time: selectedTime,
-        },
-      },
-      { withCredentials: true },
-    );
-
-    if (result.error || result.statusCode !== 201 || !result.data?.success) {
-      toast.error(
-        extractApiErrorMessage(
-          result.error,
-          "Nao foi possivel criar o novo agendamento.",
-        ),
-      );
-      setIsSubmitting(false);
-      return;
-    }
-
-    toast.success("Novo agendamento criado com sucesso.");
-    setIsSubmitting(false);
-    setOpen(false);
-    setUserEmail("");
-    onCreated?.();
-  };
+  const trimmedEmail = userEmail.trim();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -217,15 +49,22 @@ export function OwnerCreateSchedulingModal({
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Novo agendamento</DialogTitle>
-          <DialogDescription>
-            Selecione uma data, horário e informe o e-mail do usuário para criar o agendamento.
-          </DialogDescription>
+        <DialogHeader className="w-full flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <DialogTitle>Novo agendamento</DialogTitle>
+          </div>
+          <DialogClose
+            data-slot="dialog-close"
+            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            aria-label="Fechar modal"
+          >
+            <XIcon className="size-4" />
+            <span className="sr-only">Fechar</span>
+          </DialogClose>
         </DialogHeader>
 
-        <div className="grid gap-4">
-          <div className="grid gap-2">
+        <div className="grid gap-4 justify-items-center">
+          <div className="grid w-full gap-2">
             <Label htmlFor="owner-new-scheduling-email">E-mail do usuário</Label>
             <Input
               id="owner-new-scheduling-email"
@@ -233,108 +72,56 @@ export function OwnerCreateSchedulingModal({
               placeholder="usuario@email.com"
               value={userEmail}
               onChange={(event) => setUserEmail(event.target.value)}
-              disabled={isSubmitting}
             />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-            <div className="rounded-md border p-3">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                defaultMonth={date}
-                disabled={[
-                  {
-                    before: new Date(),
-                  },
-                ]}
-                modifiers={{
-                  before: new Date(),
-                }}
-                modifiersClassNames={{
-                  before: "[&>button]:line-through opacity-100 cursor-not-allowed",
-                }}
-                className="w-full bg-transparent p-0 [--cell-size:--spacing(10)] md:[--cell-size:--spacing(11)]"
-                classNames={{
-                  months: "flex w-full gap-4 flex-col md:flex-row relative",
-                  month: "flex flex-col w-full gap-4",
-                }}
-                formatters={{
-                  formatWeekdayName: (nextDate) =>
-                    nextDate.toLocaleString("pt-BR", { weekday: "short" }),
-                }}
-              />
-            </div>
-
-            <div className="rounded-md border p-3">
-              <div className="max-h-72 overflow-y-auto">
-                {isLoadingSlots ? (
-                  <p className="text-sm text-muted-foreground">
-                    Carregando horarios...
-                  </p>
-                ) : availableSlots.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Sem horarios disponiveis para a data selecionada.
-                  </p>
-                ) : (
-                  <div className="grid gap-2">
-                    {availableSlots.map((slot) => {
-                      const slotTime = slot.start_time ?? "";
-                      return (
-                        <Button
-                          key={slotTime}
-                          type="button"
-                          variant={selectedTime === slotTime ? "default" : "outline"}
-                          onClick={() => setSelectedTime(slotTime)}
-                          className="w-full shadow-none"
-                        >
-                          {slotTime}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="text-sm text-muted-foreground">
-            {date && selectedTime ? (
-              <>
-                Agendamento para{" "}
-                <span className="font-medium">
-                  {date.toLocaleDateString("pt-BR", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                  })}
-                </span>{" "}
-                as <span className="font-medium">{selectedTime}</span>.
-              </>
-            ) : (
-              <>Selecione data e horario para continuar.</>
-            )}
+          <div className="flex w-full justify-center">
+            <Calendar20
+              daysEndpoint="/owner/diary/schedulings/days"
+              createEndpoint="/owner/diary/schedulings"
+              buildCreatePayload={({ date, time }) => ({
+                scheduling: {
+                  user_email: trimmedEmail,
+                  date,
+                  time,
+                },
+              })}
+              isConfirmDisabled={trimmedEmail.length === 0}
+              successMessage="Novo agendamento pendente criado com sucesso."
+              createErrorMessage="Nao foi possivel criar o novo agendamento."
+              isOwnerScheduling
+              submitRequestToken={submitRequestToken}
+              onCreateStateChange={({ canSubmit, isSubmitting }) => {
+                setCanSubmitScheduling(canSubmit);
+                setIsSubmittingScheduling(isSubmitting);
+              }}
+              onCreateSuccess={() => {
+                setOpen(false);
+                setUserEmail("");
+                onCreated?.();
+              }}
+            />
           </div>
         </div>
 
-        <DialogFooter>
+        <div className="flex w-full items-center justify-end gap-2">
           <Button
             type="button"
             variant="outline"
+            className="!bg-red-500 !border-red-500 !text-white hover:!bg-red-600 hover:!border-red-600 hover:!text-white"
             onClick={() => setOpen(false)}
-            disabled={isSubmitting}
+            disabled={isSubmittingScheduling}
           >
             Cancelar
           </Button>
           <Button
             type="button"
-            onClick={handleCreateScheduling}
-            disabled={isSubmitDisabled}
+            onClick={() => setSubmitRequestToken((previous) => previous + 1)}
+            disabled={!canSubmitScheduling || isSubmittingScheduling || trimmedEmail.length === 0}
           >
-            {isSubmitting ? "Criando..." : "Criar agendamento"}
+            {isSubmittingScheduling ? "Criando..." : "Criar agendamento pendente"}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
