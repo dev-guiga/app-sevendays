@@ -44,6 +44,7 @@ type CurrentUserResponse = {
 
 type RefreshCurrentUserOptions = {
   silent?: boolean;
+  force?: boolean;
 };
 
 type UserContextValue = {
@@ -63,7 +64,7 @@ type AccessDecision = {
   redirectTo: string | null;
 };
 
-const USER_REFRESH_INTERVAL_MS = 12_000;
+const USER_REFRESH_INTERVAL_MS = 60_000;
 const PUBLIC_ROUTES = new Set(["/", "/login", "/cadastro", "/signup"]);
 const CURRENT_USER_QUERY_KEY = ["current-user"] as const;
 
@@ -239,7 +240,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const refreshCurrentUser = useCallback(
     async (options: RefreshCurrentUserOptions = {}) => {
-      if (!options.silent) {
+      const shouldForceRefresh = Boolean(options.force);
+
+      if (!options.silent || shouldForceRefresh) {
         await queryClient.invalidateQueries({
           queryKey: CURRENT_USER_QUERY_KEY,
         });
@@ -248,7 +251,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const refreshedUser = await queryClient.fetchQuery({
         queryKey: CURRENT_USER_QUERY_KEY,
         queryFn: fetchCurrentUser,
-        staleTime: 0,
+        staleTime:
+          options.silent && !shouldForceRefresh ? USER_REFRESH_INTERVAL_MS : 0,
       });
 
       return refreshedUser;

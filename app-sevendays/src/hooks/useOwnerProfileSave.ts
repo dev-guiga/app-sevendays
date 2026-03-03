@@ -9,7 +9,7 @@ import type { CurrentOwnerResponse, Owner, OwnerUpdateRequest } from "@/types/ow
 
 type UseOwnerProfileSaveParams = {
   setOwner: (owner: Owner) => void;
-  refreshCurrentUser: (options?: { silent?: boolean }) => Promise<unknown> | void;
+  refreshCurrentUser: (options?: { silent?: boolean; force?: boolean }) => Promise<unknown> | void;
   onSuccess: () => void;
 };
 
@@ -43,7 +43,7 @@ export function useOwnerProfileSave({
         }
 
         setOwner(updatedOwner);
-        void refreshCurrentUser({ silent: true });
+        void refreshCurrentUser({ silent: true, force: true });
         onSuccess();
         toast.success("Perfil atualizado com sucesso.");
       } finally {
