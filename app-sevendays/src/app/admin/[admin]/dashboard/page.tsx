@@ -1,166 +1,40 @@
 "use client";
-import { useParams, useRouter } from "next/navigation";
-
-import { useEffect, useMemo, useState } from "react";
 import { BookOpen, MapPin, PencilSimple, User } from "@phosphor-icons/react";
 
 import AvatarProfile from "@/components/Avatar";
 import { OwnerCreateSchedulingModal } from "@/components/OwnerCreateSchedulingModal";
-import {
-  OwnerProfileEditModal,
-  type OwnerProfileUpdateInput,
-} from "@/components/OwnerProfileEditModal";
+import { OwnerProfileEditModal } from "@/components/OwnerProfileEditModal";
 import { TableClients } from "@/components/TableClients";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUser } from "@/contexts/user-context";
-import { toast } from "sonner";
 
-import { sevendaysapi } from "@/lib/sevendaysapi";
 
-type CurrentOwnerResponse = {
-  user?: {
-    id?: number;
-    full_name?: string;
-    username?: string;
-    email?: string;
-    status?: "owner" | "user" | "standard";
-    professional_description?: string | null;
-    professional_document?: string | null;
-    professional_branch?: string | null;
-    address?: {
-      address?: string;
-      city?: string;
-      state?: string;
-      neighborhood?: string;
-    };
-  };
-};
+import { useOwnerDashboard } from "@/hooks/useOwnerDashboard";
+import { useOwnerProfileSave } from "@/hooks/useOwnerProfileSave";
 
-type Owner = NonNullable<CurrentOwnerResponse["user"]>;
-type OwnerUpdateRequest = {
-  user: OwnerProfileUpdateInput;
-};
-
-function formatAddress(address?: Owner["address"]) {
-  if (!address) {
-    return "Endereço não cadastrado";
-  }
-
-  const firstLine = [address.address, address.neighborhood]
-    .filter((value): value is string => Boolean(value))
-    .join(", ");
-  const secondLine = [address.city, address.state]
-    .filter((value): value is string => Boolean(value))
-    .join(" - ");
-
-  const fullAddress = [firstLine, secondLine]
-    .filter((value): value is string => Boolean(value))
-    .join(" | ");
-
-  return fullAddress || "Endereço não cadastrado";
-}
-
-function getOwnerName(owner: NonNullable<CurrentOwnerResponse["user"]>) {
-  return owner.full_name || owner.username || "Owner";
-}
+import { getOwnerName } from "@/lib/helpers/owner-dashboard";
 
 export default function HomeAdmin() {
-  const params = useParams<{ admin?: string }>();
-  const router = useRouter();
-  const { currentUser, isLoadingUser, refreshCurrentUser } = useUser();
+  const {
+    owner,
+    setOwner,
+    isLoading,
+    isEditModalOpen,
+    setIsEditModalOpen,
+    schedulingsReloadToken,
+    setSchedulingsReloadToken,
+    ownerAddress,
+    ownerInfo,
+    ownerWorkDescription,
+    ownerAvatar,
+    refreshCurrentUser,
+  } = useOwnerDashboard();
 
-  const [owner, setOwner] = useState<Owner | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [schedulingsReloadToken, setSchedulingsReloadToken] = useState(0);
-
-  const routeOwnerId = Number(params?.admin);
-
-  const ownerAddress = useMemo(() => formatAddress(owner?.address), [owner?.address]);
-  const ownerInfo = useMemo(() => {
-    if (!owner) {
-      return "";
-    }
-
-    return `@${owner.username ?? "owner"} • ${owner.email ?? "sem e-mail"}`;
-  }, [owner]);
-  const ownerWorkDescription = useMemo(() => {
-    if (!owner?.professional_description) {
-      return "Descrição profissional não cadastrada.";
-    }
-
-    const trimmedDescription = owner.professional_description.trim();
-    return trimmedDescription.length > 0
-      ? trimmedDescription
-      : "Descrição profissional não cadastrada.";
-  }, [owner]);
-
-  const ownerAvatar = useMemo(() => {
-    if (!owner) {
-      return "https://api.dicebear.com/9.x/initials/svg?seed=owner";
-    }
-
-    const seed = getOwnerName(owner);
-    return `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(seed)}`;
-  }, [owner]);
-
-  useEffect(() => {
-    if (isLoadingUser) {
-      return;
-    }
-
-    if (!currentUser) {
-      router.replace("/login");
-      return;
-    }
-
-    if (currentUser.status !== "owner") {
-      toast.error("Usuario autenticado nao e um owner.");
-      if (currentUser.id) {
-        router.replace(`/${currentUser.id}/portal`);
-      }
-      return;
-    }
-
-    if (currentUser.id && Number.isFinite(routeOwnerId) && currentUser.id !== routeOwnerId) {
-      router.replace(`/admin/${currentUser.id}/dashboard`);
-      return;
-    }
-
-    setOwner(currentUser);
-  }, [currentUser, isLoadingUser, routeOwnerId, router]);
-
-  const isLoading = isLoadingUser || !owner;
-
-  const handleSaveProfile = async (payload: OwnerProfileUpdateInput) => {
-    setIsSavingProfile(true);
-
-    const result = await sevendaysapi.patch<CurrentOwnerResponse, OwnerUpdateRequest>(
-      "/owner/profile",
-      { user: payload },
-      { withCredentials: true }
-    );
-
-    if (result.error || result.statusCode !== 200 || !result.data?.user) {
-      toast.error("Não foi possível salvar as informações do perfil.");
-      setIsSavingProfile(false);
-      return;
-    }
-
-    const updatedOwner = result.data.user;
-    if (updatedOwner.status !== "owner") {
-      toast.error("O usuário atualizado não é um owner.");
-      setIsSavingProfile(false);
-      return;
-    }
-
-    setOwner(updatedOwner);
-    void refreshCurrentUser({ silent: true });
-    setIsSavingProfile(false);
-    setIsEditModalOpen(false);
-    toast.success("Perfil atualizado com sucesso.");
-  };
+  const { isSavingProfile, handleSaveProfile } = useOwnerProfileSave({
+    setOwner,
+    refreshCurrentUser,
+    onSuccess: () => setIsEditModalOpen(false),
+  });
 
   return (
     <div className="w-full max-w-7xl flex flex-col items-start justify-start gap-10 sm:mx-auto mx-0 px-4">
