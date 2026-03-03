@@ -1,7 +1,7 @@
 "use client";
 import { useParams } from "next/navigation";
 
-import { Fragment, useMemo } from "react";
+import { Fragment } from "react";
 import {
   Briefcase,
   CheckCircle,
@@ -29,33 +29,6 @@ export default function PortalPage() {
     documentText,
     addressText,
   } = useDiaryDetails({ partnerParam: params?.partner });
-
-  const professionalInfoItems = useMemo(() => {
-    return [
-      { key: "name", icon: UserCircle, text: ownerName },
-      {
-        key: "email",
-        icon: Envelope,
-        text: professional?.email || "Email nao informado",
-      },
-      {
-        key: "branch",
-        icon: Briefcase,
-        text: professional?.branch || "Area profissional nao informada",
-      },
-      { key: "document", icon: FileText, text: documentText },
-      {
-        key: "address",
-        icon: MapPin,
-        text: addressText,
-      },
-      {
-        key: "owner",
-        icon: CheckCircle,
-        text: "Dados do profissional dono da agenda",
-      },
-    ];
-  }, [addressText, documentText, ownerName, professional]);
 
   if (isLoading) {
     return (
@@ -101,28 +74,74 @@ export default function PortalPage() {
             ) : null}
 
             <div className="w-full flex flex-wrap items-center justify-center gap-2">
-              {professionalInfoItems.map((item, index) => {
-                const Icon = item.icon;
+              <Fragment>
+                <span className="items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex flex-row items-center gap-2">
+                    <UserCircle size={16} className="text-primary shrink-0" />
+                    <span>{ownerName}</span>
+                  </div>
 
-                return (
-                  <Fragment key={item.key}>
-                    <span className="items-center gap-2 text-sm text-muted-foreground">
-                      <div className="flex flex-row items-center gap-2">
-                        <Icon size={16} className="text-primary shrink-0" />
-                        <span>{item.text}</span>
-                      </div>
+                  <Separator className="w-full h-[1px] bg-primary/50" />
+                </span>
+                <Separator orientation="vertical" className="h-4 bg-primary/40" />
+              </Fragment>
 
-                      <Separator className="w-full h-[1px] bg-primary/50" />
-                    </span>
-                    {index < professionalInfoItems.length - 1 ? (
-                      <Separator
-                        orientation="vertical"
-                        className="h-4 bg-primary/40"
-                      />
-                    ) : null}
-                  </Fragment>
-                );
-              })}
+              <Fragment>
+                <span className="items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex flex-row items-center gap-2">
+                    <Envelope size={16} className="text-primary shrink-0" />
+                    <span>{professional?.email || "Email nao informado"}</span>
+                  </div>
+
+                  <Separator className="w-full h-[1px] bg-primary/50" />
+                </span>
+                <Separator orientation="vertical" className="h-4 bg-primary/40" />
+              </Fragment>
+
+              <Fragment>
+                <span className="items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex flex-row items-center gap-2">
+                    <Briefcase size={16} className="text-primary shrink-0" />
+                    <span>{professional?.branch || "Area profissional nao informada"}</span>
+                  </div>
+
+                  <Separator className="w-full h-[1px] bg-primary/50" />
+                </span>
+                <Separator orientation="vertical" className="h-4 bg-primary/40" />
+              </Fragment>
+
+              <Fragment>
+                <span className="items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex flex-row items-center gap-2">
+                    <FileText size={16} className="text-primary shrink-0" />
+                    <span>{documentText}</span>
+                  </div>
+
+                  <Separator className="w-full h-[1px] bg-primary/50" />
+                </span>
+                <Separator orientation="vertical" className="h-4 bg-primary/40" />
+              </Fragment>
+
+              <Fragment>
+                <span className="items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex flex-row items-center gap-2">
+                    <MapPin size={16} className="text-primary shrink-0" />
+                    <span>{addressText}</span>
+                  </div>
+
+                  <Separator className="w-full h-[1px] bg-primary/50" />
+                </span>
+                <Separator orientation="vertical" className="h-4 bg-primary/40" />
+              </Fragment>
+
+              <span className="items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex flex-row items-center gap-2">
+                  <CheckCircle size={16} className="text-primary shrink-0" />
+                  <span>Dados do profissional dono da agenda</span>
+                </div>
+
+                <Separator className="w-full h-[1px] bg-primary/50" />
+              </span>
             </div>
           </div>
         </div>

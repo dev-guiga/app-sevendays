@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { Calendar, Envelope, IdentificationBadge, MapPin, UserIcon } from "@phosphor-icons/react";
 
 import { TableUserSchedulings } from "@/components/TableUserSchedulings";
@@ -15,22 +14,6 @@ import { formatAddress, formatBirthDate, getUserName } from "@/lib/helpers/profi
 export default function UserProfilePage() {
   const { currentUser, isLoadingUser } = useUser();
 
-  const profileData = useMemo(() => {
-    const name = getUserName(currentUser);
-
-    return {
-      name,
-      avatarUrl: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}`,
-      address: formatAddress(currentUser?.address),
-      birthDate: formatBirthDate(currentUser?.birth_date),
-      cpf: currentUser?.cpf || "CPF nao informado",
-      info: currentUser
-        ? `@${currentUser.username ?? "usuario"} • ${currentUser.email ?? "sem e-mail"}`
-        : "",
-      email: currentUser?.email || "Email nao informado",
-    };
-  }, [currentUser]);
-
   const isLoading = isLoadingUser || !currentUser;
 
   return (
@@ -42,7 +25,7 @@ export default function UserProfilePage() {
               <Skeleton className="w-20 h-20 rounded-full border-solid border-2 border-primary/50" />
             ) : (
               <AvatarProfile
-                src={profileData.avatarUrl}
+                src={`https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(getUserName(currentUser))}`}
                 className="w-20 h-20 rounded-full border-solid border-2 border-primary/50 object-cover"
               />
             )}
@@ -54,7 +37,7 @@ export default function UserProfilePage() {
                 <Skeleton className="h-8 w-56" />
               ) : (
                 <div>
-                  <h1 className="text-2xl font-bold">{profileData.name}</h1>
+                  <h1 className="text-2xl font-bold">{getUserName(currentUser)}</h1>
                   <Separator className="h-[1px] bg-primary/50" />
                 </div>
               )}
@@ -68,7 +51,7 @@ export default function UserProfilePage() {
                   {isLoading ? (
                     <Skeleton className="inline-block h-[14px] w-72 align-middle" />
                   ) : (
-                    profileData.address
+                    formatAddress(currentUser?.address)
                   )}
                   <Separator className="w-full h-[1px] bg-primary/50" />
                 </span>
@@ -81,7 +64,10 @@ export default function UserProfilePage() {
                   {isLoading ? (
                     <Skeleton className="inline-block h-[14px] w-72 align-middle" />
                   ) : (
-                    profileData.info
+                    <>
+                      <span>@{currentUser?.username ?? "usuario"}</span> •{" "}
+                      <span>{currentUser?.email ?? "sem e-mail"}</span>
+                    </>
                   )}
                   <Separator className="w-full h-[1px] bg-primary/50" />
                 </span>
@@ -94,7 +80,7 @@ export default function UserProfilePage() {
                   {isLoading ? (
                     <Skeleton className="inline-block h-[14px] w-64 align-middle" />
                   ) : (
-                    profileData.email
+                    currentUser?.email || "Email nao informado"
                   )}
                   <Separator className="w-full h-[1px] bg-primary/50" />
                 </span>
@@ -107,7 +93,7 @@ export default function UserProfilePage() {
                   {isLoading ? (
                     <Skeleton className="inline-block h-[14px] w-48 align-middle" />
                   ) : (
-                    profileData.cpf
+                    currentUser?.cpf || "CPF nao informado"
                   )}
                   <Separator className="w-full h-[1px] bg-primary/50" />
                 </span>
@@ -120,7 +106,7 @@ export default function UserProfilePage() {
                   {isLoading ? (
                     <Skeleton className="inline-block h-[14px] w-40 align-middle" />
                   ) : (
-                    profileData.birthDate
+                    formatBirthDate(currentUser?.birth_date)
                   )}
                   <Separator className="w-full h-[1px] bg-primary/50" />
                 </span>
