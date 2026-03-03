@@ -1,20 +1,21 @@
 "use client";
 
+import { Separator } from "@/components/ui/separator";
 import { CheckCircle } from "@phosphor-icons/react";
 
-import { Separator } from "@radix-ui/react-dropdown-menu";
 
 import AvatarProfile from "@/components/Avatar";
-import NextImage from "next/image";
+import { Button } from "@/components/ui/button";
+import TemplateCards from "@/components/TemplateCards";
 
 import Logo from "@/app/assets/image/seven-days.svg";
 import LogoSevenDays from "@/app/assets/image/logo-seven-days.png";
 import UserOne from "../../public/image/avatars/guilherme.png";
 import UserTwo from "../../public/image/avatars/giovana.jpg";
 import UserThree from "../../public/image/avatars/kerolin.jpg";
+
+import NextImage from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import TemplateCards from "@/components/TemplateCards";
 
 const users = [
   {

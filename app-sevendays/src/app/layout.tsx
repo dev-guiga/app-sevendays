@@ -4,9 +4,11 @@ import { ThemeProvider } from "next-themes";
 
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { QueryProvider } from "@/components/query-provider";
-import { UserAccessGuard, UserProvider } from "@/contexts/user-context";
 import { Toaster } from "@/components/ui/sonner";
+
+import { QueryProvider } from "@/components/query-provider";
+
+import { UserAccessGuard, UserProvider } from "@/contexts/user-context";
 
 import "./globals.css";
 
