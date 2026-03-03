@@ -15,6 +15,7 @@ import AvatarProfile from "@/components/Avatar";
 import Calendar20 from "@/components/calendar-20";
 import DiaryDetailsSkeleton from "@/components/skeletons/DiaryDetailsSkeleton";
 import { Separator } from "@/components/ui/separator";
+
 import { useDiaryDetails } from "@/hooks/useDiaryDetails";
 
 export default function PortalPage() {
