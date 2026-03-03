@@ -1,4 +1,3 @@
-"use client";
 import NextImage from "next/image";
 
 import AgendaImage from "@/app/assets/image/agenda.jpg";
