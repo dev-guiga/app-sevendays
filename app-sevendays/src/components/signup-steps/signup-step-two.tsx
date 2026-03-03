@@ -7,7 +7,6 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CircleNotchIcon } from "@phosphor-icons/react";
 import type {
   SignupFieldErrors,
   SignupFieldName,
@@ -186,19 +185,8 @@ export function SignupStepTwo({
           >
             Voltar
           </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full flex-1"
-          >
-            {isSubmitting ? (
-              <>
-                <CircleNotchIcon size={14} className="animate-spin" />
-                Criando conta...
-              </>
-            ) : (
-              "Criar conta"
-            )}
+          <Button type="submit" isLoading={isSubmitting} className="w-full flex-1">
+            {isSubmitting ? "Criando conta..." : "Criar conta"}
           </Button>
         </div>
       </div>

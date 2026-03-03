@@ -1,5 +1,4 @@
 "use client";
-import { CircleNotch } from "@phosphor-icons/react";
 
 import { DatePickerSimple } from "@/components/DatePickerSimple";
 import { OwnerSettingsSkeleton } from "@/components/OwnerSettingsSkeleton";
@@ -113,17 +112,12 @@ export default function AdminSettingsPage() {
           </SettingsFormSection>
 
           <div className="w-full flex items-center justify-end">
-            <Button type="submit" disabled={isSavingDiary}>
-              {isSavingDiary ? (
-                <>
-                  <CircleNotch size={14} className="animate-spin" />
-                  Salvando...
-                </>
-              ) : hasDiary ? (
-                "Salvar dados da agenda"
-              ) : (
-                "Criar dados da agenda"
-              )}
+            <Button type="submit" isLoading={isSavingDiary}>
+              {isSavingDiary
+                ? "Salvando..."
+                : hasDiary
+                  ? "Salvar dados da agenda"
+                  : "Criar dados da agenda"}
             </Button>
           </div>
         </form>
@@ -233,17 +227,12 @@ export default function AdminSettingsPage() {
           </SettingsFormSection>
 
           <div className="w-full flex items-center justify-end">
-            <Button type="submit" disabled={isSavingScheduling || !hasDiary}>
-              {isSavingScheduling ? (
-                <>
-                  <CircleNotch size={14} className="animate-spin" />
-                  Salvando...
-                </>
-              ) : hasSchedulingRule ? (
-                "Salvar funcionamento"
-              ) : (
-                "Criar funcionamento"
-              )}
+            <Button type="submit" isLoading={isSavingScheduling} disabled={!hasDiary}>
+              {isSavingScheduling
+                ? "Salvando..."
+                : hasSchedulingRule
+                  ? "Salvar funcionamento"
+                  : "Criar funcionamento"}
             </Button>
           </div>
         </form>

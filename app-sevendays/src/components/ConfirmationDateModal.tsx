@@ -78,7 +78,7 @@ export function ConfirmationDateModal({
                 Cancelar
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={disabled || isSubmitting}>
+            <Button type="submit" disabled={disabled} isLoading={isSubmitting}>
               {isSubmitting ? "Confirmando..." : "Confirmar"}
             </Button>
           </DialogFooter>

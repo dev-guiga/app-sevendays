@@ -200,12 +200,7 @@ export function LoginForm({
         <FieldSeparator>Caso seja Parceiro</FieldSeparator>
 
         <Field>
-          <Button
-            variant="outline"
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting}
-          >
+          <Button variant="outline" type="submit" className="w-full" isLoading={isSubmitting}>
             {isSubmitting ? "Entrando..." : "sign-in como profissional"}
           </Button>
         </Field>

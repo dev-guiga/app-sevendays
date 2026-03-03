@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+import { CircleNotch } from "@phosphor-icons/react"
 
 import { cn } from "@/lib/utils"
 
@@ -36,24 +37,39 @@ const buttonVariants = cva(
   }
 )
 
+type ButtonProps = React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+    isLoading?: boolean
+    loadingIcon?: React.ComponentType<{ size?: number; className?: string }>
+    loadingIconSize?: number
+  }
+
 function Button({
   className,
   variant,
   size,
   asChild = false,
+  isLoading = false,
+  loadingIcon: LoadingIcon = CircleNotch,
+  loadingIconSize = 14,
+  disabled,
+  children,
   ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
+}: ButtonProps) {
   const Comp = asChild ? Slot : "button"
 
   return (
     <Comp
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      disabled={disabled || isLoading}
+      aria-busy={isLoading || props["aria-busy"]}
       {...props}
-    />
+    >
+      {isLoading ? <LoadingIcon size={loadingIconSize} className="animate-spin" /> : null}
+      {children}
+    </Comp>
   )
 }
 

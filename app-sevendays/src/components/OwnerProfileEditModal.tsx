@@ -260,7 +260,7 @@ export function OwnerProfileEditModal({
             <Button
               type="submit"
               className="w-[90px] bg-transparent border border-green-500 text-green-500 hover:bg-green-50"
-              disabled={isSaving}
+              isLoading={isSaving}
             >
               {isSaving ? "Salvando..." : "Salvar"}
             </Button>
