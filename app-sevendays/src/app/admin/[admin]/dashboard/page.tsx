@@ -1,6 +1,8 @@
 "use client";
+import { useParams, useRouter } from "next/navigation";
 
 import { useEffect, useMemo, useState } from "react";
+import { BookOpen, MapPin, PencilSimple, User } from "@phosphor-icons/react";
 
 import AvatarProfile from "@/components/Avatar";
 import { OwnerCreateSchedulingModal } from "@/components/OwnerCreateSchedulingModal";
@@ -12,10 +14,9 @@ import { TableClients } from "@/components/TableClients";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/contexts/user-context";
-import { sevendaysapi } from "@/lib/sevendaysapi";
-import { BookOpen, MapPin, PencilSimple, User } from "@phosphor-icons/react";
-import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
+
+import { sevendaysapi } from "@/lib/sevendaysapi";
 
 type CurrentOwnerResponse = {
   user?: {

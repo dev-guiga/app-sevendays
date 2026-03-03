@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import Calendar20 from "@/components/calendar-20";
+import SchedulingCalendar from "@/components/calendar-20";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -76,7 +76,7 @@ export function OwnerCreateSchedulingModal({
           </div>
 
           <div className="flex w-full justify-center">
-            <Calendar20
+            <SchedulingCalendar
               daysEndpoint="/owner/diary/schedulings/days"
               createEndpoint="/owner/diary/schedulings"
               buildCreatePayload={({ date, time }) => ({

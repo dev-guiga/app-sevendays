@@ -7,86 +7,20 @@ import { ConfirmationDateModal } from "@/components/ConfirmationDateModal";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { extractApiErrorMessage } from "@/lib/helpers/api";
+import { formatDateForApi } from "@/lib/helpers/date";
 import { sevendaysapi } from "@/lib/sevendaysapi";
-import { format } from "date-fns";
+import type {
+  AvailableSlotsResponse,
+  CreateSchedulingResponse,
+  DefaultCreateSchedulingPayload,
+  SchedulingCalendarProps,
+} from "@/types/scheduling";
 import { toast } from "sonner";
 
-type AvailableSlot = {
-  start_time?: string;
-  end_time?: string;
-};
-
-type DiaryDaysResponse = {
-  success?: boolean;
-  date?: string;
-  available_slots?: AvailableSlot[];
-};
-
-type CreateSchedulingResponse = {
-  success?: boolean;
-  id?: number;
-  date?: string;
-  time?: string;
-  status?: string;
-};
-
-type DefaultCreateSchedulingPayload = {
-  scheduling: {
-    date: string;
-    time: string;
-    description: string;
-  };
-};
-
-type Calendar20Props = {
-  diaryId?: number;
-  daysEndpoint?: string;
-  createEndpoint?: string;
-  buildCreatePayload?: (params: { date: string; time: string }) => unknown;
-  confirmButtonLabel?: string;
-  isConfirmDisabled?: boolean;
-  successMessage?: string;
-  createErrorMessage?: string;
-  onCreateSuccess?: () => void;
-  isOwnerScheduling?: boolean;
-  submitRequestToken?: number;
-  onCreateStateChange?: (state: {
-    canSubmit: boolean;
-    isSubmitting: boolean;
-  }) => void;
-};
-
-function extractApiErrorMessage(error: unknown, fallback: string) {
-  if (typeof error === "string" && error.trim().length > 0) {
-    return error;
-  }
-
-  if (error && typeof error === "object") {
-    const candidate = error as {
-      error?: {
-        message?: string;
-      };
-      message?: string;
-    };
-
-    if (typeof candidate.error?.message === "string" && candidate.error.message.trim().length > 0) {
-      return candidate.error.message;
-    }
-
-    if (typeof candidate.message === "string" && candidate.message.trim().length > 0) {
-      return candidate.message;
-    }
-  }
-
-  return fallback;
-}
-
-function formatDateForApi(date: Date) {
-  return format(date, "yyyy-MM-dd");
-}
-
-export default function Calendar20({
-  diaryId,
+export default function SchedulingCalendar({
+  resourceId,
+  endpointBasePath = "/diaries",
   daysEndpoint,
   createEndpoint,
   buildCreatePayload,
@@ -98,7 +32,7 @@ export default function Calendar20({
   isOwnerScheduling = false,
   submitRequestToken,
   onCreateStateChange,
-}: Calendar20Props) {
+}: SchedulingCalendarProps) {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -109,19 +43,23 @@ export default function Calendar20({
     [date],
   );
   const resolvedDaysEndpoint = React.useMemo(
-    () => daysEndpoint ?? (diaryId ? `/diaries/${diaryId}/days` : null),
-    [daysEndpoint, diaryId],
+    () =>
+      daysEndpoint ??
+      (resourceId ? `${endpointBasePath}/${resourceId}/days` : null),
+    [daysEndpoint, endpointBasePath, resourceId],
   );
   const resolvedCreateEndpoint = React.useMemo(
-    () => createEndpoint ?? (diaryId ? `/diaries/${diaryId}/schedulings` : null),
-    [createEndpoint, diaryId],
+    () =>
+      createEndpoint ??
+      (resourceId ? `${endpointBasePath}/${resourceId}/schedulings` : null),
+    [createEndpoint, endpointBasePath, resourceId],
   );
 
   const availableSlotsQuery = useQuery({
     queryKey: ["diary-days", resolvedDaysEndpoint, selectedDateApi],
     enabled: Boolean(selectedDateApi && resolvedDaysEndpoint),
     queryFn: async () => {
-      const result = await sevendaysapi.get<DiaryDaysResponse>(
+      const result = await sevendaysapi.get<AvailableSlotsResponse>(
         resolvedDaysEndpoint!,
         {
           withCredentials: true,

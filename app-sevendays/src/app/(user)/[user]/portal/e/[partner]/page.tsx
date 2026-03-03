@@ -12,7 +12,7 @@ import {
 } from "@phosphor-icons/react";
 
 import AvatarProfile from "@/components/Avatar";
-import Calendar20 from "@/components/calendar-20";
+import SchedulingCalendar from "@/components/calendar-20";
 import DiaryDetailsSkeleton from "@/components/skeletons/DiaryDetailsSkeleton";
 import { Separator } from "@/components/ui/separator";
 
@@ -131,7 +131,7 @@ export default function PortalPage() {
           <h1 className="text-2xl font-bold text-primary-foreground">
             Agenda de {ownerName}
           </h1>
-          <Calendar20 diaryId={diaryId} />
+          <SchedulingCalendar resourceId={diaryId} />
         </div>
       </div>
     </div>
