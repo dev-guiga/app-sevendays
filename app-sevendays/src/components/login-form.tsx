@@ -62,7 +62,9 @@ function getLoginErrorMessage(error: unknown): string {
   return "Nao foi possivel realizar o login.";
 }
 
-function resolveLoginDestination(user: { id?: number; status?: UserStatus } | null) {
+function resolveLoginDestination(
+  user: { id?: number; status?: UserStatus } | null,
+) {
   if (!user?.id) {
     return null;
   }
@@ -182,7 +184,7 @@ export function LoginForm({
         <FieldSeparator>Agora continue com</FieldSeparator>
 
         <Field>
-          <Button type="button" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting}>
             <UserIcon size={32} />
             sign-in
           </Button>
@@ -200,7 +202,12 @@ export function LoginForm({
         <FieldSeparator>Caso seja Parceiro</FieldSeparator>
 
         <Field>
-          <Button variant="outline" type="submit" className="w-full" isLoading={isSubmitting}>
+          <Button
+            variant="outline"
+            type="submit"
+            className="w-full"
+            isLoading={isSubmitting}
+          >
             {isSubmitting ? "Entrando..." : "sign-in como profissional"}
           </Button>
         </Field>
