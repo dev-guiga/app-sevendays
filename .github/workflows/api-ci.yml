@@ -24,8 +24,8 @@ jobs:
 
       - name: Install native packages
         run: |
-          apt-get update
-          apt-get install --no-install-recommends -y default-libmysqlclient-dev pkg-config
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y default-libmysqlclient-dev pkg-config
 
       - uses: ruby/setup-ruby@v1
         env:
@@ -47,8 +47,8 @@ jobs:
 
       - name: Install native packages
         run: |
-          apt-get update
-          apt-get install --no-install-recommends -y default-libmysqlclient-dev pkg-config
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y default-libmysqlclient-dev pkg-config
 
       - uses: ruby/setup-ruby@v1
         env:
