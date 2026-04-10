@@ -166,7 +166,7 @@ class SchedulingsController < ApplicationController
     scope = filter_by_user_date_range(scope)
     scope = filter_by_user_status(scope)
 
-    scope.order(created_at: created_at_order, id: created_at_order)
+    apply_sort(scope)
   end
 
   def filter_by_user_query(scope)
@@ -211,6 +211,39 @@ class SchedulingsController < ApplicationController
     return :asc if normalized_order == "asc"
 
     :desc
+  end
+
+  def sort_field
+    value = params[:sort_by].to_s.strip
+    return "created_at" if value.blank?
+
+    allowed_fields = %w[professional_name diary_title date time created_at]
+    allowed_fields.include?(value) ? value : "created_at"
+  end
+
+  def sort_direction
+    normalized_order = params[:sort_direction].to_s.strip.downcase
+    return :asc if normalized_order == "asc"
+    return :desc if normalized_order == "desc"
+
+    created_at_order
+  end
+
+  def apply_sort(scope)
+    direction = sort_direction
+
+    case sort_field
+    when "professional_name"
+      scope.order(Arel.sql("users.first_name #{direction}, users.last_name #{direction}, schedulings.id #{direction}"))
+    when "diary_title"
+      scope.order(Arel.sql("diaries.title #{direction}, schedulings.id #{direction}"))
+    when "date"
+      scope.order(date: direction, time: direction, id: direction)
+    when "time"
+      scope.order(time: direction, date: direction, id: direction)
+    else
+      scope.order(created_at: direction, id: direction)
+    end
   end
 
   def parse_date_param(raw_value)

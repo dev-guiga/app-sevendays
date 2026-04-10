@@ -44,9 +44,9 @@ export default function PortalPage() {
     return (
       <div className="w-full max-w-7xl flex flex-row items-center justify-center gap-10 sm:mx-auto mx-0 px-4">
         <div className="w-full flex flex-col justify-center items-center gap-4 py-20">
-          <h1 className="text-2xl font-bold">Agenda nao encontrada</h1>
+          <h1 className="text-2xl font-bold">Agenda não encontrada</h1>
           <p className="text-sm text-muted-foreground">
-            Nao foi possivel carregar os dados desta agenda.
+            Não foi possível carregar os dados desta agenda.
           </p>
         </div>
       </div>
@@ -90,7 +90,7 @@ export default function PortalPage() {
                 <span className="items-center gap-2 text-sm text-muted-foreground">
                   <div className="flex flex-row items-center gap-2">
                     <Envelope size={16} className="text-primary shrink-0" />
-                    <span>{professional?.email || "Email nao informado"}</span>
+                    <span>{professional?.email || "E-mail não informado"}</span>
                   </div>
 
                   <Separator className="w-full h-[1px] bg-primary/50" />
@@ -102,7 +102,7 @@ export default function PortalPage() {
                 <span className="items-center gap-2 text-sm text-muted-foreground">
                   <div className="flex flex-row items-center gap-2">
                     <Briefcase size={16} className="text-primary shrink-0" />
-                    <span>{professional?.branch || "Area profissional nao informada"}</span>
+                    <span>{professional?.branch || "Área profissional não informada"}</span>
                   </div>
 
                   <Separator className="w-full h-[1px] bg-primary/50" />

@@ -54,15 +54,15 @@ interface SidebarOwnerProps {
 
 function getUserName(user: CurrentUser | null) {
   if (!user) {
-    return "Usuario";
+    return "Usuário";
   }
 
-  return user.full_name || user.username || "Usuario";
+  return user.full_name || user.username || "Usuário";
 }
 
 function getUserAddress(user: CurrentUser | null) {
   if (!user?.address) {
-    return "Endereco nao cadastrado";
+    return "Endereço não cadastrado";
   }
 
   const firstLine = [user.address.address, user.address.neighborhood]
@@ -75,7 +75,7 @@ function getUserAddress(user: CurrentUser | null) {
     .filter((value): value is string => Boolean(value))
     .join(" | ");
 
-  return fullAddress || "Endereco nao cadastrado";
+  return fullAddress || "Endereço não cadastrado";
 }
 
 export function SidebarOwner({
@@ -97,8 +97,12 @@ export function SidebarOwner({
         return [] as SidebarSchedulingCard[];
       }
 
+      if (result.statusCode === 404) {
+        return [] as SidebarSchedulingCard[];
+      }
+
       if (result.error || result.statusCode !== 200 || !result.data?.success) {
-        throw new Error("Nao foi possivel carregar os agendamentos do owner.");
+        throw new Error("Não foi possível carregar os agendamentos do profissional.");
       }
 
       return mapSidebarSchedulingsToCards(result.data.schedulings);
@@ -111,7 +115,7 @@ export function SidebarOwner({
       return;
     }
 
-    toast.error("Nao foi possivel carregar os agendamentos do owner.");
+    toast.error("Não foi possível carregar os agendamentos do profissional.");
   }, [ownerSchedulingsQuery.isError, ownerSchedulingsQuery.errorUpdatedAt]);
 
   const schedulings = ownerSchedulingsQuery.data ?? [];
@@ -136,7 +140,7 @@ export function SidebarOwner({
             <button
               type="button"
               className="absolute top-1 right-0 z-10 rounded-full bg-transparent text-primary p-2 hover:bg-accent disabled:opacity-50"
-              aria-label="Encerrar sessao"
+              aria-label="Encerrar sessão"
               onClick={onLogout}
               disabled={isLoggingOut}
             >
@@ -155,7 +159,7 @@ export function SidebarOwner({
 
           <div className="flex flex-col gap-4">
             <h2 className="text-xl font-bold text-accent-foreground">
-              Horarios Marcados
+              Horários marcados
             </h2>
 
             {isLoadingSchedulings ? (

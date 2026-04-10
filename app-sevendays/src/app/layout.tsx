@@ -24,7 +24,7 @@ const rationale = Rationale({
 });
 
 export const metadata: Metadata = {
-  title: "Marked",
+  title: "Se7en Days",
   description: "Seu horário e nossa prioridade",
 };
 
@@ -34,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="pt-BR" suppressHydrationWarning>
       <body
         className={`${interFont.variable} ${rationale.variable} antialiased relative [&::-webkit-scrollbar]:hidden`}
       >

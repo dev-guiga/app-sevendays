@@ -130,7 +130,7 @@ function mapApiFieldErrors(responseData: unknown): SignupFieldErrors {
 
 function getApiFormError(responseData: unknown): string {
   if (!isRecord(responseData) || !isRecord(responseData.error)) {
-    return "Nao foi possivel criar sua conta.";
+    return "Não foi possível criar sua conta.";
   }
 
   const message = responseData.error.message;
@@ -138,7 +138,7 @@ function getApiFormError(responseData: unknown): string {
     return message;
   }
 
-  return "Nao foi possivel criar sua conta.";
+  return "Não foi possível criar sua conta.";
 }
 
 function mapIssuesToFieldErrors(
@@ -378,7 +378,7 @@ export function SignupForm({
       setCurrentStep(hasStepOneErrors ? 1 : 2);
       toast.error(getApiFormError(responseData));
     } else {
-      toast.error("Nao foi possivel conectar com a API.");
+      toast.error("Não foi possível conectar com a API.");
     }
 
     setIsSubmitting(false);
@@ -398,7 +398,7 @@ export function SignupForm({
           <p className="text-muted-foreground text-sm text-balance">
             {status === "owner"
               ? "Preencha os dados para criar sua conta de parceiro."
-              : "Preencha os dados para criar sua conta de usuario."}
+              : "Preencha os dados para criar sua conta de usuário."}
           </p>
         </div>
 

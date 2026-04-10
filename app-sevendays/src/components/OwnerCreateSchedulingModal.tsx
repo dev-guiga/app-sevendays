@@ -88,7 +88,7 @@ export function OwnerCreateSchedulingModal({
               })}
               isConfirmDisabled={trimmedEmail.length === 0}
               successMessage="Novo agendamento pendente criado com sucesso."
-              createErrorMessage="Nao foi possivel criar o novo agendamento."
+              createErrorMessage="Não foi possível criar o novo agendamento."
               isOwnerScheduling
               submitRequestToken={submitRequestToken}
               onCreateStateChange={({ canSubmit, isSubmitting }) => {

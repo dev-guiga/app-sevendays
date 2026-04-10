@@ -582,6 +582,66 @@ RSpec.describe SchedulingsController, type: :controller do
         expect(body["schedulings"].map { |item| item["id"] }).to eq([ newer_marked_scheduling.id ])
         expect(body["pagination"]["total_count"]).to eq(1)
       end
+
+      it "orders my schedulings by supported profile fields" do
+        alpha_owner = create_user!(
+          status: "owner",
+          first_name: "Ana",
+          last_name: "Beta",
+          email: "ana.owner@example.com"
+        )
+        beta_owner = create_user!(
+          status: "owner",
+          first_name: "Bruno",
+          last_name: "Alfa",
+          email: "bruno.owner@example.com"
+        )
+        alpha_diary = create_diary!(user: alpha_owner, overrides: { title: "Zeta Agenda" })
+        beta_diary = create_diary!(user: beta_owner, overrides: { title: "Alpha Agenda" })
+        alpha_rule = create_scheduling_rule!(user: alpha_owner, diary: alpha_diary)
+        beta_rule = create_scheduling_rule!(user: beta_owner, diary: beta_diary)
+
+        first_scheduling = Scheduling.create!(
+          scheduling_attributes(
+            user: user,
+            diary: alpha_diary,
+            rule: alpha_rule,
+            overrides: {
+              date: Date.current + 5.days,
+              time: "16:00",
+              status: "marked"
+            }
+          )
+        )
+        second_scheduling = Scheduling.create!(
+          scheduling_attributes(
+            user: user,
+            diary: beta_diary,
+            rule: beta_rule,
+            overrides: {
+              date: Date.current + 4.days,
+              time: "09:00",
+              status: "marked"
+            }
+          )
+        )
+
+        get :my_schedulings, params: { query: ".owner@", sort_by: "professional_name", sort_direction: "asc", status: "all" }, format: :json
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["schedulings"].map { |item| item["id"] }).to eq([ first_scheduling.id, second_scheduling.id ])
+
+        get :my_schedulings, params: { query: ".owner@", sort_by: "diary_title", sort_direction: "asc", status: "all" }, format: :json
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["schedulings"].map { |item| item["id"] }).to eq([ second_scheduling.id, first_scheduling.id ])
+
+        get :my_schedulings, params: { query: ".owner@", sort_by: "date", sort_direction: "asc", status: "all" }, format: :json
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["schedulings"].map { |item| item["id"] }).to eq([ second_scheduling.id, first_scheduling.id ])
+
+        get :my_schedulings, params: { query: ".owner@", sort_by: "time", sort_direction: "asc", status: "all" }, format: :json
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["schedulings"].map { |item| item["id"] }).to eq([ second_scheduling.id, first_scheduling.id ])
+      end
     end
 
     context "when current user is owner" do

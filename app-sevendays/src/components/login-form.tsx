@@ -59,7 +59,7 @@ function getLoginErrorMessage(error: unknown): string {
     }
   }
 
-  return "Nao foi possivel realizar o login.";
+  return "Não foi possível realizar o login.";
 }
 
 function resolveLoginDestination(
@@ -94,7 +94,7 @@ export function LoginForm({
     const password = String(formData.get("password") ?? "");
 
     if (!email || !password) {
-      toast.error("Email e senha sao obrigatorios.");
+      toast.error("E-mail e senha são obrigatórios.");
       return;
     }
 
@@ -124,7 +124,7 @@ export function LoginForm({
     const destination = resolveLoginDestination(resolvedUser);
 
     if (!destination) {
-      toast.error("Login realizado, mas nao foi possivel definir o destino.");
+      toast.error("Login realizado, mas não foi possível definir o destino.");
       setIsSubmitting(false);
       return;
     }
@@ -144,7 +144,7 @@ export function LoginForm({
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">
-            Faça login na sua conta do Google
+            Faça login na sua conta
           </h1>
           <p className="text-muted-foreground text-sm text-balance">
             Digite seu e-mail abaixo para acessar sua conta
@@ -153,14 +153,14 @@ export function LoginForm({
 
         <Field>
           <FieldLabel htmlFor="email" className="font-bold text-base">
-            Username
+            Nome de usuário | E-mail
           </FieldLabel>
           <Input
             id="email"
             name="email"
             type="email"
             autoComplete="email"
-            placeholder="m@example.com"
+            placeholder="voce@exemplo.com"
             required
             disabled={isSubmitting}
           />
@@ -181,12 +181,12 @@ export function LoginForm({
           />
         </Field>
 
-        <FieldSeparator>Agora continue com</FieldSeparator>
+        <FieldSeparator>Continuar</FieldSeparator>
 
         <Field>
           <Button type="submit" disabled={isSubmitting}>
             <UserIcon size={32} />
-            sign-in
+            Entrar
           </Button>
 
           <FieldDescription className="text-center">
@@ -199,7 +199,7 @@ export function LoginForm({
           </FieldDescription>
         </Field>
 
-        <FieldSeparator>Caso seja Parceiro</FieldSeparator>
+        <FieldSeparator>Se você for profissional</FieldSeparator>
 
         <Field>
           <Button
@@ -208,7 +208,7 @@ export function LoginForm({
             className="w-full"
             isLoading={isSubmitting}
           >
-            {isSubmitting ? "Entrando..." : "sign-in como profissional"}
+            {isSubmitting ? "Entrando..." : "Entrar como profissional"}
           </Button>
         </Field>
       </FieldGroup>

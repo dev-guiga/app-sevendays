@@ -32,12 +32,12 @@ export function SignupStepTwo({
   return (
     <div className={className}>
       <FieldDescription className="text-center">
-        Dados de endereco para finalizar o cadastro.
+        Dados de endereço para finalizar o cadastro.
       </FieldDescription>
 
       <div className="flex flex-col gap-5">
         <Field className="flex flex-col gap-0">
-          <FieldLabel htmlFor="address">Endereco</FieldLabel>
+          <FieldLabel htmlFor="address">Endereço</FieldLabel>
           <div className="flex flex-col gap-1">
             <Input
               id="address"
@@ -81,7 +81,7 @@ export function SignupStepTwo({
               id="city"
               name="city"
               type="text"
-              placeholder="Sao Paulo"
+              placeholder="São Paulo"
               aria-invalid={Boolean(fieldErrors.city)}
               onChange={() => onFieldChange("city")}
               required
@@ -116,7 +116,7 @@ export function SignupStepTwo({
           <>
             <Field className="flex flex-col gap-0">
               <FieldLabel htmlFor="professional_description">
-                Descricao profissional (opcional)
+                Descrição profissional (opcional)
               </FieldLabel>
               <div className="flex flex-col gap-1">
                 <Textarea

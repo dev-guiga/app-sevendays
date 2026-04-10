@@ -47,7 +47,7 @@ export default function UserProfilePage() {
               <div className="flex flex-row items-center gap-2">
                 <MapPin size={16} className="text-primary" />
                 <span className="text-[14px] text-muted-foreground">
-                  <span className="text-[14px] font-semibold">Endereco:</span>{" "}
+                  <span className="text-[14px] font-semibold">Endereço:</span>{" "}
                   {isLoading ? (
                     <Skeleton className="inline-block h-[14px] w-72 align-middle" />
                   ) : (
@@ -80,7 +80,7 @@ export default function UserProfilePage() {
                   {isLoading ? (
                     <Skeleton className="inline-block h-[14px] w-64 align-middle" />
                   ) : (
-                    currentUser?.email || "Email nao informado"
+                    currentUser?.email || "E-mail não informado"
                   )}
                   <Separator className="w-full h-[1px] bg-primary/50" />
                 </span>
@@ -93,7 +93,7 @@ export default function UserProfilePage() {
                   {isLoading ? (
                     <Skeleton className="inline-block h-[14px] w-48 align-middle" />
                   ) : (
-                    currentUser?.cpf || "CPF nao informado"
+                    currentUser?.cpf || "CPF não informado"
                   )}
                   <Separator className="w-full h-[1px] bg-primary/50" />
                 </span>
@@ -118,7 +118,7 @@ export default function UserProfilePage() {
 
       <div className="w-full flex flex-col gap-7 pb-10 overflow-hidden">
         <h1 className="text-3xl text-primary/90 font-bold">
-          Meus horarios agendados
+          Meus horários agendados
         </h1>
         <TableUserSchedulings />
       </div>

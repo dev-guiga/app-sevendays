@@ -61,15 +61,15 @@ interface SidebarUserProps {
 
 function getUserName(user: SidebarUserProps["user"]) {
   if (!user) {
-    return "Usuario";
+    return "Usuário";
   }
 
-  return user.full_name || user.username || "Usuario";
+  return user.full_name || user.username || "Usuário";
 }
 
 function getUserAddress(user: SidebarUserProps["user"]) {
   if (!user?.address) {
-    return "Endereco nao cadastrado";
+    return "Endereço não cadastrado";
   }
 
   const firstLine = [user.address.address, user.address.neighborhood]
@@ -82,7 +82,7 @@ function getUserAddress(user: SidebarUserProps["user"]) {
     .filter((value): value is string => Boolean(value))
     .join(" | ");
 
-  return fullAddress || "Endereco nao cadastrado";
+  return fullAddress || "Endereço não cadastrado";
 }
 
 function extractApiErrorMessage(error: unknown, fallback: string) {
@@ -137,8 +137,12 @@ export function SidebarUser({
         return [] as SidebarSchedulingCard[];
       }
 
+      if (result.statusCode === 404) {
+        return [] as SidebarSchedulingCard[];
+      }
+
       if (result.error || result.statusCode !== 200 || !result.data?.success) {
-        throw new Error("Nao foi possivel carregar os agendamentos da sidebar.");
+        throw new Error("Não foi possível carregar os agendamentos da barra lateral.");
       }
 
       return mapSidebarSchedulingsToCards(result.data.schedulings);
@@ -151,7 +155,7 @@ export function SidebarUser({
       return;
     }
 
-    toast.error("Nao foi possivel carregar os agendamentos da sidebar.");
+    toast.error("Não foi possível carregar os agendamentos da barra lateral.");
   }, [userSidebarSchedulingsQuery.isError, userSidebarSchedulingsQuery.errorUpdatedAt]);
 
   const schedulings = userSidebarSchedulingsQuery.data ?? [];
@@ -179,13 +183,13 @@ export function SidebarUser({
 
     if (result.error || result.statusCode !== 200 || !result.data?.success) {
       toast.error(
-        extractApiErrorMessage(result.error, "Nao foi possivel cancelar o horario agendado."),
+        extractApiErrorMessage(result.error, "Não foi possível cancelar o horário agendado."),
       );
       setIsCancellingScheduling(false);
       return;
     }
 
-    toast.success("Horario cancelado com sucesso.");
+    toast.success("Horário cancelado com sucesso.");
     await queryClient.invalidateQueries({
       queryKey: ["user-sidebar-latest-schedulings"],
     });
@@ -213,7 +217,7 @@ export function SidebarUser({
             <button
               type="button"
               className="absolute top-1 right-0 z-10 rounded-full bg-transparent text-primary p-2 hover:bg-accent disabled:opacity-50"
-              aria-label="Encerrar sessao"
+              aria-label="Encerrar sessão"
               onClick={onLogout}
               disabled={isLoggingOut}
             >
@@ -232,7 +236,7 @@ export function SidebarUser({
 
           <div className="flex flex-col gap-4">
             <h2 className="text-xl font-bold text-accent-foreground">
-              Horarios Marcados
+              Horários marcados
             </h2>
 
             {isLoadingSchedulings ? (
@@ -256,7 +260,7 @@ export function SidebarUser({
               </div>
             ) : schedulings.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Sem horarios marcados recentes.
+                Sem horários marcados recentes.
               </p>
             ) : (
               <div className="flex flex-col gap-3 max-h-150 overflow-scroll [&::-webkit-scrollbar]:hidden">
@@ -316,9 +320,9 @@ export function SidebarUser({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancelar Agendamento</DialogTitle>
+            <DialogTitle>Cancelar agendamento</DialogTitle>
             <DialogDescription>
-              Deseja cancelar o horario agendado?
+              Deseja cancelar o horário agendado?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -332,7 +336,7 @@ export function SidebarUser({
               }}
               disabled={isCancellingScheduling}
             >
-              Nao
+              Não
             </Button>
             <Button
               variant="default"

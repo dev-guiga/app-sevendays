@@ -27,7 +27,7 @@ export default function SchedulingCalendar({
   confirmButtonLabel,
   isConfirmDisabled = false,
   successMessage = "Agendamento confirmado com sucesso.",
-  createErrorMessage = "Nao foi possivel confirmar o agendamento.",
+  createErrorMessage = "Não foi possível confirmar o agendamento.",
   onCreateSuccess,
   isOwnerScheduling = false,
   submitRequestToken,
@@ -78,7 +78,7 @@ export default function SchedulingCalendar({
         throw new Error(
           extractApiErrorMessage(
             result.error,
-            "Nao foi possivel carregar os horarios disponiveis para esta data.",
+            "Não foi possível carregar os horários disponíveis para esta data.",
           ),
         );
       }
@@ -99,7 +99,7 @@ export default function SchedulingCalendar({
     const errorMessage =
       availableSlotsQuery.error instanceof Error
         ? availableSlotsQuery.error.message
-        : "Nao foi possivel carregar os horarios disponiveis para esta data.";
+        : "Não foi possível carregar os horários disponíveis para esta data.";
     toast.error(errorMessage);
   }, [availableSlotsQuery.error, availableSlotsQuery.errorUpdatedAt, availableSlotsQuery.isError]);
 
@@ -139,7 +139,7 @@ export default function SchedulingCalendar({
           scheduling: {
             date: formattedDate,
             time: selectedTime,
-            description: "Agendamento criado via portal do usuario",
+            description: "Agendamento criado via portal do usuário",
           },
         } as DefaultCreateSchedulingPayload);
 
@@ -234,10 +234,10 @@ export default function SchedulingCalendar({
           style={{ scrollbarWidth: "none" }}
         >
           {isLoadingSlots ? (
-            <p className="text-sm text-muted-foreground">Carregando horarios...</p>
+            <p className="text-sm text-muted-foreground">Carregando horários...</p>
           ) : availableSlots.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Sem horarios disponiveis para a data selecionada.
+              Sem horários disponíveis para a data selecionada.
             </p>
           ) : (
             <div className="grid gap-2">
@@ -264,7 +264,7 @@ export default function SchedulingCalendar({
           <div className="text-sm">
             {date && selectedTime ? (
               <>
-                Seu agendamento sera para{" "}
+                Seu agendamento será para{" "}
                 <span className="font-medium">
                   {date.toLocaleDateString("pt-BR", {
                     weekday: "long",
@@ -272,10 +272,10 @@ export default function SchedulingCalendar({
                     month: "long",
                   })}
                 </span>{" "}
-                as <span className="font-medium">{selectedTime}</span>.
+                às <span className="font-medium">{selectedTime}</span>.
               </>
             ) : (
-              <>Selecione uma data e horario disponiveis.</>
+              <>Selecione uma data e um horário disponível.</>
             )}
           </div>
 

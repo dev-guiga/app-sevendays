@@ -50,7 +50,7 @@ function OwnerNavigation({ ownerId }: { ownerId: number }) {
     <>
       <HeaderNavLink
         href={dashboardPath}
-        label="Dashboard"
+        label="Painel"
         isActive={pathname === dashboardPath}
       />
       <HeaderNavLink

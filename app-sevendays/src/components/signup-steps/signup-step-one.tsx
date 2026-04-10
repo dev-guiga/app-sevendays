@@ -27,7 +27,7 @@ export function SignupStepOne({
   return (
     <div className={className}>
       <FieldDescription className="text-center">
-        Dados de acesso e informacoes pessoais.
+        Dados de acesso e informações pessoais.
       </FieldDescription>
       <div className="flex flex-col gap-5">
         <Field className="flex flex-col gap-0">
@@ -69,7 +69,7 @@ export function SignupStepOne({
         </Field>
 
         <Field className="flex flex-col gap-0">
-          <FieldLabel htmlFor="username">Username</FieldLabel>
+          <FieldLabel htmlFor="username">Nome de usuário</FieldLabel>
           <div className="flex flex-col gap-1">
             <Input
               id="username"
@@ -88,7 +88,7 @@ export function SignupStepOne({
         </Field>
 
         <Field className="flex flex-col gap-0">
-          <FieldLabel htmlFor="email">Email</FieldLabel>
+          <FieldLabel htmlFor="email">E-mail</FieldLabel>
           <div className="flex flex-col gap-1">
             <Input
               id="email"
@@ -183,7 +183,7 @@ export function SignupStepOne({
         </Field>
         <Field>
           <Button type="button" onClick={onContinue} className="w-full">
-            Continuar para endereco
+            Continuar para endereço
           </Button>
         </Field>
       </div>

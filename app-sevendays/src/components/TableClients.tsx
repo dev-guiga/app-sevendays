@@ -207,6 +207,8 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
       reloadToken,
       currentPage,
       PER_PAGE,
+      sortField,
+      sortDirection,
       statusFilter,
       appliedSearchText,
       startDateFilterValue,
@@ -220,6 +222,8 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
           params: {
             page: currentPage,
             per_page: PER_PAGE,
+            sort_by: sortField,
+            sort_direction: sortDirection,
             status: statusFilter,
             ...(appliedSearchText ? { query: appliedSearchText } : {}),
             ...(startDateFilter ? { date_from: startDateFilterValue } : {}),
@@ -227,6 +231,17 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
           },
         },
       );
+
+      if (result.statusCode === 404) {
+        return {
+          schedulings: [],
+          page: 1,
+          totalPages: 1,
+          totalCount: 0,
+          hasPrev: false,
+          hasNext: false,
+        };
+      }
 
       if (
         result.error ||
@@ -279,53 +294,6 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
   const hasNext = ownerSchedulingsQuery.data?.hasNext ?? false;
   const isLoading = ownerSchedulingsQuery.isPending;
 
-  const sortedSchedulings = useMemo(() => {
-    const items = [ ...schedulings ];
-    const factor = sortDirection === "asc" ? 1 : -1;
-
-    const normalizeText = (value?: string) => value?.trim().toLowerCase() ?? "";
-    const normalizeDate = (value?: string) => {
-      if (!value) {
-        return "";
-      }
-
-      const isoDateMatch = value.match(/^\d{4}-\d{2}-\d{2}$/);
-      return isoDateMatch ? value : value.slice(0, 10);
-    };
-    const normalizeTime = (value?: string) => {
-      if (!value) {
-        return -1;
-      }
-
-      const match = value.match(/(\d{2}):(\d{2})/);
-      if (!match) {
-        return -1;
-      }
-
-      return Number(match[1]) * 60 + Number(match[2]);
-    };
-
-    items.sort((left, right) => {
-      if (sortField === "date") {
-        const leftValue = normalizeDate(left.date);
-        const rightValue = normalizeDate(right.date);
-        return leftValue.localeCompare(rightValue) * factor;
-      }
-
-      if (sortField === "time") {
-        return (normalizeTime(left.time) - normalizeTime(right.time)) * factor;
-      }
-
-      if (sortField === "user_email") {
-        return normalizeText(left.user_email).localeCompare(normalizeText(right.user_email)) * factor;
-      }
-
-      return normalizeText(left.user_name).localeCompare(normalizeText(right.user_name)) * factor;
-    });
-
-    return items;
-  }, [schedulings, sortDirection, sortField]);
-
   const paginationItems = useMemo(
     () => buildPaginationItems(currentPage, totalPages),
     [currentPage, totalPages],
@@ -341,12 +309,14 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
+      setCurrentPage(1);
       setSortDirection((previous) => (previous === "asc" ? "desc" : "asc"));
       return;
     }
 
     setSortField(field);
     setSortDirection("asc");
+    setCurrentPage(1);
   };
 
   const getCaretClassName = (field: SortField) => {
@@ -534,7 +504,7 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
                     </TableCell>
                   </TableRow>
                 )
-              : sortedSchedulings.map((scheduling) => (
+              : schedulings.map((scheduling) => (
                   <TableRow key={scheduling.id}>
                     <TableCell className="font-medium">
                       {scheduling.user_name || "Paciente"}

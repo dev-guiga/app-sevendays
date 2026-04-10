@@ -66,7 +66,7 @@ export default function HomeAdmin() {
               {isLoading ? (
                 <Skeleton className="h-8 w-56" />
               ) : (
-                <h1 className="text-2xl font-bold">{owner ? getOwnerName(owner) : "Owner"}</h1>
+                <h1 className="text-2xl font-bold">{owner ? getOwnerName(owner) : "Profissional"}</h1>
               )}
               <Separator className="h-[1px] bg-primary/50" />
             </div>
@@ -91,7 +91,7 @@ export default function HomeAdmin() {
                 <div className="flex flex-row items-center gap-2">
                   <User size={16} className="text-primary" />
                   <span className="text-[14px] text-muted-foreground">
-                    <span className="text-[14px] font-semibold">Info:</span>{" "}
+                    <span className="text-[14px] font-semibold">Informações:</span>{" "}
                     {isLoading ? (
                       <Skeleton className="inline-block h-[14px] w-72 align-middle" />
                     ) : (
@@ -123,7 +123,7 @@ export default function HomeAdmin() {
 
       <div className="w-full flex flex-col gap-7 pb-10 overflow-hidden">
         <div className="w-full flex items-center justify-between gap-3">
-          <h1 className="text-3xl text-primary/90 font-bold">Lista de agendamento</h1>
+          <h1 className="text-3xl text-primary/90 font-bold">Lista de agendamentos</h1>
           <OwnerCreateSchedulingModal
             onCreated={() => setSchedulingsReloadToken((previous) => previous + 1)}
           />

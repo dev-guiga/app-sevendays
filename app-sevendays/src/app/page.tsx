@@ -64,7 +64,7 @@ export default function Home() {
                   className="text-muted-foreground"
                 />
                 <span className="text-muted-foreground">
-                  Agendamente e cancelamentos a qualquer momento
+                  Agendamentos e cancelamentos a qualquer momento
                 </span>
               </div>
 
@@ -75,7 +75,7 @@ export default function Home() {
                   className="text-muted-foreground"
                 />
                 <span className="text-muted-foreground">
-                  Contato direto com a profissional
+                  Contato direto com o profissional
                 </span>
               </div>
             </div>
@@ -126,7 +126,7 @@ export default function Home() {
       <div className="w-100vw  flex flex-row items-start justify-center gap-10  sm:mx-auto mx-0 bg-accent">
         <div className="max-w-7xl flex flex-row md:flex-nowrap flex-wrap items-center md:justify-between justify-center gap-4 px-4 pt-10 pb-10 sm:pb-20 sm:pt-20">
           <div className="w-full max-w-7xl flex flex-col flex-wrap items-start md:justify-start justify-center gap-4 px-4 pt-10 pb-10 sm:pb-20 sm:mx-auto mx-0 sm:pt-20">
-            <h1 className="text-4xl font-extrabold">agende já seus horários</h1>
+            <h1 className="text-4xl font-extrabold">Agende já seus horários</h1>
             <div className="flex flex-row items-center justify-start gap-1">
               <h1 className="text-4xl font-extrabold">ou</h1>
               <h1 className="text-4xl font-extrabold text-primary">
@@ -135,11 +135,11 @@ export default function Home() {
             </div>
             <div>
               <div>
-                <h1 className="text-xl font-bold">cadastre-se já</h1>
+                <h1 className="text-xl font-bold">Cadastre-se já</h1>
                 <div className="flex flex-row items-center justify-start gap-2">
                   <Button variant="default" className="">
                     <Link href="/login" className="text-lg font-bold">
-                      cliente/Paciente
+                      Cliente/Paciente
                     </Link>
                   </Button>
 
@@ -148,7 +148,7 @@ export default function Home() {
                     className="bg-chart-2 hover:bg-chart-2/90"
                   >
                     <Link href="/login" className="text-lg font-bold">
-                      profissional
+                      Profissional
                     </Link>
                   </Button>
                 </div>
