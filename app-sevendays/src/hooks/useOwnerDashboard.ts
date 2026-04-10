@@ -18,11 +18,13 @@ export function useOwnerDashboard() {
   const router = useRouter();
   const { currentUser, isLoadingUser, refreshCurrentUser } = useUser();
 
-  const [owner, setOwner] = useState<Owner | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [schedulingsReloadToken, setSchedulingsReloadToken] = useState(0);
 
   const routeOwnerId = Number(params?.admin);
+
+  const owner =
+    currentUser && currentUser.status === "owner" ? (currentUser as Owner) : null;
 
   const ownerAddress = useMemo(() => formatOwnerAddress(owner?.address), [owner?.address]);
   const ownerInfo = useMemo(() => getOwnerInfo(owner), [owner]);
@@ -51,15 +53,12 @@ export function useOwnerDashboard() {
       router.replace(`/admin/${currentUser.id}/dashboard`);
       return;
     }
-
-    setOwner(currentUser);
   }, [currentUser, isLoadingUser, routeOwnerId, router]);
 
   const isLoading = isLoadingUser || !owner;
 
   return {
     owner,
-    setOwner,
     isLoading,
     isEditModalOpen,
     setIsEditModalOpen,

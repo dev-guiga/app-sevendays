@@ -17,7 +17,6 @@ import { getOwnerName } from "@/lib/helpers/owner-dashboard";
 export default function HomeAdmin() {
   const {
     owner,
-    setOwner,
     isLoading,
     isEditModalOpen,
     setIsEditModalOpen,
@@ -31,7 +30,6 @@ export default function HomeAdmin() {
   } = useOwnerDashboard();
 
   const { isSavingProfile, handleSaveProfile } = useOwnerProfileSave({
-    setOwner,
     refreshCurrentUser,
     onSuccess: () => setIsEditModalOpen(false),
   });

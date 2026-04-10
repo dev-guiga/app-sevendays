@@ -323,20 +323,11 @@ export function TableUserSchedulings() {
     toast.error("Nao foi possivel carregar seus horarios agendados.");
   }, [userSchedulingsQuery.isError, userSchedulingsQuery.errorUpdatedAt]);
 
-  useEffect(() => {
-    if (!userSchedulingsQuery.data) {
-      return;
-    }
-
-    if (userSchedulingsQuery.data.page !== currentPage) {
-      setCurrentPage(userSchedulingsQuery.data.page);
-    }
-  }, [currentPage, userSchedulingsQuery.data]);
-
   const schedulings = useMemo(
     () => userSchedulingsQuery.data?.schedulings ?? [],
     [userSchedulingsQuery.data?.schedulings],
   );
+  const resolvedCurrentPage = userSchedulingsQuery.data?.page ?? currentPage;
   const totalPages = userSchedulingsQuery.data?.totalPages ?? 1;
   const totalCount = userSchedulingsQuery.data?.totalCount ?? 0;
   const hasPrev = userSchedulingsQuery.data?.hasPrev ?? false;
@@ -344,12 +335,12 @@ export function TableUserSchedulings() {
   const isLoading = userSchedulingsQuery.isPending;
 
   const paginationItems = useMemo(
-    () => buildPaginationItems(currentPage, totalPages),
-    [currentPage, totalPages],
+    () => buildPaginationItems(resolvedCurrentPage, totalPages),
+    [resolvedCurrentPage, totalPages],
   );
 
   const handleGoToPage = (page: number) => {
-    if (page < 1 || page > totalPages || page === currentPage) {
+    if (page < 1 || page > totalPages || page === resolvedCurrentPage) {
       return;
     }
 
@@ -611,7 +602,7 @@ export function TableUserSchedulings() {
               <TableCell colSpan={6} className="p-0">
                 <div className="h-60 w-full flex items-center justify-center">
                   <p className="text-muted-foreground">
-                    Sem horarios agendados para os filtros aplicados.
+                    Sem horários agendados para os filtros aplicados.
                   </p>
                 </div>
               </TableCell>
@@ -651,7 +642,7 @@ export function TableUserSchedulings() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        aria-label="Excluir horario agendado"
+                        aria-label="Excluir horário agendado"
                         onClick={() => setCancellingScheduling(scheduling)}
                         disabled={!canDelete}
                         className="h-8 w-8 text-muted-foreground hover:text-primary"
@@ -670,7 +661,7 @@ export function TableUserSchedulings() {
       {!isLoading && !isEmptyState ? (
         <div className="w-full flex flex-col gap-2">
           <p className="text-sm text-muted-foreground text-center">
-            Pagina {currentPage} de {totalPages} • {totalCount} agendamento(s)
+            Página {resolvedCurrentPage} de {totalPages} • {totalCount} agendamento(s)
           </p>
           <Pagination>
             <PaginationContent>
@@ -682,7 +673,7 @@ export function TableUserSchedulings() {
                     if (!hasPrev) {
                       return;
                     }
-                    handleGoToPage(currentPage - 1);
+                    handleGoToPage(resolvedCurrentPage - 1);
                   }}
                   className={
                     !hasPrev ? "pointer-events-none opacity-50" : undefined
@@ -703,7 +694,7 @@ export function TableUserSchedulings() {
                   <PaginationItem key={item}>
                     <PaginationLink
                       href="#"
-                      isActive={item === currentPage}
+                      isActive={item === resolvedCurrentPage}
                       onClick={(event) => {
                         event.preventDefault();
                         handleGoToPage(item);
@@ -723,7 +714,7 @@ export function TableUserSchedulings() {
                     if (!hasNext) {
                       return;
                     }
-                    handleGoToPage(currentPage + 1);
+                    handleGoToPage(resolvedCurrentPage + 1);
                   }}
                   className={
                     !hasNext ? "pointer-events-none opacity-50" : undefined
@@ -745,9 +736,9 @@ export function TableUserSchedulings() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Excluir horario agendado</DialogTitle>
+            <DialogTitle>Excluir horário agendado</DialogTitle>
             <DialogDescription>
-              Deseja excluir este horario? O status sera alterado para
+              Deseja excluir este horário? O status será alterado para
               cancelado.
             </DialogDescription>
           </DialogHeader>
@@ -757,7 +748,7 @@ export function TableUserSchedulings() {
               onClick={closeCancelDialog}
               disabled={isCancelling}
             >
-              Nao
+              Não
             </Button>
             <Button onClick={handleConfirmCancel} disabled={isCancelling}>
               {isCancelling ? "Excluindo..." : "Confirmar"}

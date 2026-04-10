@@ -128,7 +128,7 @@ async function ownerHasAccessToDiary({
   );
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = normalizePathname(request.nextUrl.pathname);
   const segments = pathname.split("/").filter(Boolean);
   const isOwnerArea = segments[0] === "admin";

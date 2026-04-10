@@ -56,7 +56,7 @@ export function useDiaryDetails({ partnerParam }: UseDiaryDetailsParams) {
     const errorMessage =
       query.error instanceof Error ? query.error.message : FALLBACK_ERROR_MESSAGE;
     toast.error(errorMessage);
-  }, [query.isError, query.errorUpdatedAt]);
+  }, [query.error, query.errorUpdatedAt, query.isError]);
 
   const diary = query.data ?? null;
   const isLoading = isDiaryIdValid && query.isPending;

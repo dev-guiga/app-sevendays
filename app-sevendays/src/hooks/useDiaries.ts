@@ -57,15 +57,7 @@ export function useDiaries() {
     toast.error("Nao foi possivel carregar as agendas.");
   }, [query.isError, query.errorUpdatedAt]);
 
-  useEffect(() => {
-    if (!query.data) {
-      return;
-    }
-
-    if (query.data.page !== currentPage) {
-      setCurrentPage(query.data.page);
-    }
-  }, [currentPage, query.data]);
+  const resolvedCurrentPage = query.data?.page ?? currentPage;
 
   const applySearch = (text: string) => {
     setAppliedSearchText(text.trim());
@@ -79,7 +71,7 @@ export function useDiaries() {
     hasPrev: query.data?.hasPrev ?? false,
     hasNext: query.data?.hasNext ?? false,
     isPending: query.isPending,
-    currentPage,
+    currentPage: resolvedCurrentPage,
     setCurrentPage,
     searchText,
     setSearchText,

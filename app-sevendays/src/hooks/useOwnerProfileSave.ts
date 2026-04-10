@@ -5,16 +5,14 @@ import { toast } from "sonner";
 
 import type { OwnerProfileUpdateInput } from "@/components/OwnerProfileEditModal";
 import { sevendaysapi } from "@/lib/sevendaysapi";
-import type { CurrentOwnerResponse, Owner, OwnerUpdateRequest } from "@/types/owner-dashboard";
+import type { CurrentOwnerResponse, OwnerUpdateRequest } from "@/types/owner-dashboard";
 
 type UseOwnerProfileSaveParams = {
-  setOwner: (owner: Owner) => void;
   refreshCurrentUser: (options?: { silent?: boolean; force?: boolean }) => Promise<unknown> | void;
   onSuccess: () => void;
 };
 
 export function useOwnerProfileSave({
-  setOwner,
   refreshCurrentUser,
   onSuccess,
 }: UseOwnerProfileSaveParams) {
@@ -42,15 +40,14 @@ export function useOwnerProfileSave({
           return;
         }
 
-        setOwner(updatedOwner);
-        void refreshCurrentUser({ silent: true, force: true });
+        await refreshCurrentUser({ silent: true, force: true });
         onSuccess();
         toast.success("Perfil atualizado com sucesso.");
       } finally {
         setIsSavingProfile(false);
       }
     },
-    [onSuccess, refreshCurrentUser, setOwner]
+    [onSuccess, refreshCurrentUser]
   );
 
   return {

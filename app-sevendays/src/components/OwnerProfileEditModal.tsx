@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -61,51 +59,39 @@ export function OwnerProfileEditModal({
   isSaving,
   onSubmit,
 }: OwnerProfileEditModalProps) {
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
-  const [neighborhood, setNeighborhood] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [professionalDescription, setProfessionalDescription] = useState("");
-  const [professionalDocument, setProfessionalDocument] = useState("");
-  const [professionalBranch, setProfessionalBranch] = useState("");
-
-  useEffect(() => {
-    if (!open || !owner) {
-      return;
-    }
-
-    setUsername(owner.username ?? "");
-    setEmail(owner.email ?? "");
-    setAddress(owner.address?.address ?? "");
-    setNeighborhood(owner.address?.neighborhood ?? "");
-    setCity(owner.address?.city ?? "");
-    setState(owner.address?.state ?? "");
-    setProfessionalDescription(owner.professional_description ?? "");
-    setProfessionalDocument(owner.professional_document ?? "");
-    setProfessionalBranch(owner.professional_branch ?? "");
-  }, [open, owner]);
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
 
     const payload: OwnerProfileUpdateInput = {
-      username: username.trim(),
-      email: email.trim(),
+      username: String(formData.get("username") ?? "").trim(),
+      email: String(formData.get("email") ?? "").trim(),
       address_attributes: {
-        address: address.trim(),
-        neighborhood: neighborhood.trim(),
-        city: city.trim(),
-        state: state.trim(),
+        address: String(formData.get("address") ?? "").trim(),
+        neighborhood: String(formData.get("neighborhood") ?? "").trim(),
+        city: String(formData.get("city") ?? "").trim(),
+        state: String(formData.get("state") ?? "").trim(),
       },
-      professional_description: normalizeOptional(professionalDescription),
-      professional_document: normalizeOptional(professionalDocument),
-      professional_branch: normalizeOptional(professionalBranch),
+      professional_description: normalizeOptional(String(formData.get("professional_description") ?? "")),
+      professional_document: normalizeOptional(String(formData.get("professional_document") ?? "")),
+      professional_branch: normalizeOptional(String(formData.get("professional_branch") ?? "")),
     };
 
     await onSubmit(payload);
   };
+
+  const formKey = [
+    open ? "open" : "closed",
+    owner?.username ?? "",
+    owner?.email ?? "",
+    owner?.address?.address ?? "",
+    owner?.address?.neighborhood ?? "",
+    owner?.address?.city ?? "",
+    owner?.address?.state ?? "",
+    owner?.professional_branch ?? "",
+    owner?.professional_document ?? "",
+    owner?.professional_description ?? "",
+  ].join("|");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -124,7 +110,7 @@ export function OwnerProfileEditModal({
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
+        <form key={formKey} onSubmit={handleSubmit}>
           <div className="px-6 py-4 flex flex-col gap-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
@@ -133,8 +119,8 @@ export function OwnerProfileEditModal({
                 </label>
                 <Input
                   id="profile-username"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
+                  name="username"
+                  defaultValue={owner?.username ?? ""}
                   required
                   disabled={isSaving}
                 />
@@ -145,9 +131,9 @@ export function OwnerProfileEditModal({
                 </label>
                 <Input
                   id="profile-email"
+                  name="email"
                   type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  defaultValue={owner?.email ?? ""}
                   required
                   disabled={isSaving}
                 />
@@ -161,8 +147,8 @@ export function OwnerProfileEditModal({
                 </label>
                 <Input
                   id="profile-address"
-                  value={address}
-                  onChange={(event) => setAddress(event.target.value)}
+                  name="address"
+                  defaultValue={owner?.address?.address ?? ""}
                   required
                   disabled={isSaving}
                 />
@@ -173,8 +159,8 @@ export function OwnerProfileEditModal({
                 </label>
                 <Input
                   id="profile-neighborhood"
-                  value={neighborhood}
-                  onChange={(event) => setNeighborhood(event.target.value)}
+                  name="neighborhood"
+                  defaultValue={owner?.address?.neighborhood ?? ""}
                   required
                   disabled={isSaving}
                 />
@@ -188,8 +174,8 @@ export function OwnerProfileEditModal({
                 </label>
                 <Input
                   id="profile-city"
-                  value={city}
-                  onChange={(event) => setCity(event.target.value)}
+                  name="city"
+                  defaultValue={owner?.address?.city ?? ""}
                   required
                   disabled={isSaving}
                 />
@@ -200,8 +186,8 @@ export function OwnerProfileEditModal({
                 </label>
                 <Input
                   id="profile-state"
-                  value={state}
-                  onChange={(event) => setState(event.target.value)}
+                  name="state"
+                  defaultValue={owner?.address?.state ?? ""}
                   required
                   disabled={isSaving}
                 />
@@ -215,8 +201,8 @@ export function OwnerProfileEditModal({
                 </label>
                 <Input
                   id="profile-branch"
-                  value={professionalBranch}
-                  onChange={(event) => setProfessionalBranch(event.target.value)}
+                  name="professional_branch"
+                  defaultValue={owner?.professional_branch ?? ""}
                   disabled={isSaving}
                 />
               </div>
@@ -226,8 +212,8 @@ export function OwnerProfileEditModal({
                 </label>
                 <Input
                   id="profile-document"
-                  value={professionalDocument}
-                  onChange={(event) => setProfessionalDocument(event.target.value)}
+                  name="professional_document"
+                  defaultValue={owner?.professional_document ?? ""}
                   disabled={isSaving}
                 />
               </div>
@@ -239,9 +225,9 @@ export function OwnerProfileEditModal({
               </label>
               <Textarea
                 id="profile-description"
+                name="professional_description"
                 rows={4}
-                value={professionalDescription}
-                onChange={(event) => setProfessionalDescription(event.target.value)}
+                defaultValue={owner?.professional_description ?? ""}
                 disabled={isSaving}
               />
             </div>

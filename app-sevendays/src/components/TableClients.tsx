@@ -274,20 +274,11 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
     toast.error("Não foi possível carregar os horários agendados.");
   }, [ownerSchedulingsQuery.isError, ownerSchedulingsQuery.errorUpdatedAt]);
 
-  useEffect(() => {
-    if (!ownerSchedulingsQuery.data) {
-      return;
-    }
-
-    if (ownerSchedulingsQuery.data.page !== currentPage) {
-      setCurrentPage(ownerSchedulingsQuery.data.page);
-    }
-  }, [currentPage, ownerSchedulingsQuery.data]);
-
   const schedulings = useMemo(
     () => ownerSchedulingsQuery.data?.schedulings ?? [],
     [ownerSchedulingsQuery.data?.schedulings],
   );
+  const resolvedCurrentPage = ownerSchedulingsQuery.data?.page ?? currentPage;
   const totalPages = ownerSchedulingsQuery.data?.totalPages ?? 1;
   const totalCount = ownerSchedulingsQuery.data?.totalCount ?? 0;
   const hasPrev = ownerSchedulingsQuery.data?.hasPrev ?? false;
@@ -295,12 +286,12 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
   const isLoading = ownerSchedulingsQuery.isPending;
 
   const paginationItems = useMemo(
-    () => buildPaginationItems(currentPage, totalPages),
-    [currentPage, totalPages],
+    () => buildPaginationItems(resolvedCurrentPage, totalPages),
+    [resolvedCurrentPage, totalPages],
   );
 
   const handleGoToPage = (page: number) => {
-    if (page < 1 || page > totalPages || page === currentPage) {
+    if (page < 1 || page > totalPages || page === resolvedCurrentPage) {
       return;
     }
 
@@ -531,6 +522,7 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
         <div className="w-full flex flex-col gap-2">
           <p className="text-sm text-muted-foreground text-center">
             Página {currentPage} de {totalPages} • {totalCount} agendamento(s)
+            Página {resolvedCurrentPage} de {totalPages} • {totalCount} agendamento(s)
           </p>
           <Pagination>
             <PaginationContent>
@@ -542,7 +534,7 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
                     if (!hasPrev) {
                       return;
                     }
-                    handleGoToPage(currentPage - 1);
+                    handleGoToPage(resolvedCurrentPage - 1);
                   }}
                   className={!hasPrev ? "pointer-events-none opacity-50" : undefined}
                 />
@@ -561,7 +553,7 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
                   <PaginationItem key={item}>
                     <PaginationLink
                       href="#"
-                      isActive={item === currentPage}
+                      isActive={item === resolvedCurrentPage}
                       onClick={(event) => {
                         event.preventDefault();
                         handleGoToPage(item);
@@ -581,7 +573,7 @@ export function TableClients({ reloadToken = 0 }: TableClientsProps) {
                     if (!hasNext) {
                       return;
                     }
-                    handleGoToPage(currentPage + 1);
+                    handleGoToPage(resolvedCurrentPage + 1);
                   }}
                   className={!hasNext ? "pointer-events-none opacity-50" : undefined}
                 />
