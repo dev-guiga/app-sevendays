@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 json.success true
+avatar_url = ProfileAvatarUrlSigner.new(user: @user).call
 json.user do
   json.id @user.id
   json.first_name @user.first_name
@@ -16,6 +17,7 @@ json.user do
   json.professional_description @user.professional_description
   json.professional_document @user.professional_document
   json.professional_branch @user.professional_branch
+  json.avatar_url avatar_url
   if @user.address.present?
     json.address do
       json.id @user.address.id

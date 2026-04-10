@@ -47,6 +47,10 @@ export function getOwnerWorkDescription(owner: Owner | null) {
 }
 
 export function getOwnerAvatar(owner: Owner | null) {
+  if (owner?.avatar_url?.trim()) {
+    return owner.avatar_url;
+  }
+
   if (!owner) {
     return `${DICEBEAR_INITIALS_URL}${DEFAULT_OWNER_AVATAR_SEED}`;
   }

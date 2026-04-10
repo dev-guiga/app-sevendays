@@ -1,6 +1,9 @@
 "use client";
+import { useState } from "react";
+
 import { BookOpen, MapPin, PencilSimple, User } from "@phosphor-icons/react";
 
+import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 import { EditableAvatar } from "@/components/EditableAvatar";
 import { OwnerCreateSchedulingModal } from "@/components/OwnerCreateSchedulingModal";
 import { OwnerProfileEditModal } from "@/components/OwnerProfileEditModal";
@@ -10,12 +13,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 
 import { useOwnerDashboard } from "@/hooks/useOwnerDashboard";
+import { useAvatarUpload } from "@/hooks/useAvatarUpload";
 import { useOwnerProfileSave } from "@/hooks/useOwnerProfileSave";
-import { useProfileAvatar } from "@/hooks/useProfileAvatar";
 
 import { getOwnerName } from "@/lib/helpers/owner-dashboard";
 
 export default function HomeAdmin() {
+  const [selectedAvatarSrc, setSelectedAvatarSrc] = useState<string | null>(null);
+  const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
+
   const {
     owner,
     isLoading,
@@ -35,20 +41,15 @@ export default function HomeAdmin() {
     onSuccess: () => setIsEditModalOpen(false),
   });
   const ownerName = owner ? getOwnerName(owner) : "Profissional";
-  const { avatarSrc, setStoredAvatar } = useProfileAvatar(
-    owner?.id ? `owner:${owner.id}` : null,
-    ownerAvatar,
-  );
+  const { isUploading, uploadAvatar } = useAvatarUpload({ refreshCurrentUser });
 
-  const handleAvatarFileSelect = async (file: File) => {
-    const nextAvatar = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result ?? ""));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-
-    setStoredAvatar(nextAvatar);
+  const handleAvatarFileSelect = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSelectedAvatarSrc(String(reader.result ?? ""));
+      setIsCropDialogOpen(true);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -60,10 +61,11 @@ export default function HomeAdmin() {
               <Skeleton className="w-20 h-20 rounded-full border-solid border-2 border-primary/50" />
             ) : (
               <EditableAvatar
-                src={avatarSrc}
+                src={ownerAvatar}
                 alt={`Foto de perfil de ${ownerName}`}
                 initials={ownerName.slice(0, 2).toUpperCase()}
                 className="size-20"
+                isUploading={isUploading}
                 onFileSelect={handleAvatarFileSelect}
               />
             )}
@@ -155,6 +157,25 @@ export default function HomeAdmin() {
         owner={owner}
         isSaving={isSavingProfile}
         onSubmit={handleSaveProfile}
+      />
+
+      <AvatarCropDialog
+        open={isCropDialogOpen}
+        imageSrc={selectedAvatarSrc}
+        isSaving={isUploading}
+        onOpenChange={(open) => {
+          setIsCropDialogOpen(open);
+          if (!open) {
+            setSelectedAvatarSrc(null);
+          }
+        }}
+        onConfirm={async (file) => {
+          const uploaded = await uploadAvatar(file);
+          if (uploaded) {
+            setIsCropDialogOpen(false);
+            setSelectedAvatarSrc(null);
+          }
+        }}
       />
     </div>
   );

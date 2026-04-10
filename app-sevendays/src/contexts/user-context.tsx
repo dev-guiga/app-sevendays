@@ -30,6 +30,7 @@ export type CurrentUser = {
   professional_description?: string | null;
   professional_document?: string | null;
   professional_branch?: string | null;
+  avatar_url?: string | null;
   address?: {
     address?: string;
     city?: string;

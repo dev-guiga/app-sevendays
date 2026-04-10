@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId } from "react";
 
 import { PencilSimple } from "@phosphor-icons/react";
 
@@ -13,7 +13,8 @@ type EditableAvatarProps = {
   initials: string;
   className?: string;
   overlayClassName?: string;
-  onFileSelect: (file: File) => Promise<void> | void;
+  isUploading?: boolean;
+  onFileSelect: (file: File) => void;
 };
 
 export function EditableAvatar({
@@ -22,10 +23,10 @@ export function EditableAvatar({
   initials,
   className,
   overlayClassName,
+  isUploading = false,
   onFileSelect,
 }: EditableAvatarProps) {
   const inputId = useId();
-  const [isUploading, setIsUploading] = useState(false);
 
   const handleInputChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -37,13 +38,7 @@ export function EditableAvatar({
       return;
     }
 
-    setIsUploading(true);
-
-    try {
-      await onFileSelect(file);
-    } finally {
-      setIsUploading(false);
-    }
+    onFileSelect(file);
   };
 
   return (
@@ -71,7 +66,7 @@ export function EditableAvatar({
           isUploading && "bg-black/55 opacity-100",
         )}
       >
-        <PencilSimple size={12} weight="bold" />
+        <PencilSimple size={10} weight="bold" />
         <span className="text-[10px] font-semibold uppercase leading-none tracking-wide">
           {isUploading ? "Enviando" : "Editar"}
         </span>

@@ -20,6 +20,7 @@ class Owner::UsersController < ApplicationController
     params.require(:user).permit(
       :username,
       :email,
+      :avatar_storage_key,
       :professional_description,
       :professional_document,
       :professional_branch,

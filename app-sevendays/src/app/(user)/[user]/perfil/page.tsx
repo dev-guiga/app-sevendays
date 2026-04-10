@@ -1,37 +1,39 @@
 "use client";
 
+import { useState } from "react";
+
 import { Calendar, Envelope, IdentificationBadge, MapPin, UserIcon } from "@phosphor-icons/react";
 
+import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 import { EditableAvatar } from "@/components/EditableAvatar";
 import { TableUserSchedulings } from "@/components/TableUserSchedulings";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { useUser } from "@/contexts/user-context";
-import { useProfileAvatar } from "@/hooks/useProfileAvatar";
+import { useAvatarUpload } from "@/hooks/useAvatarUpload";
 
 import { formatAddress, formatBirthDate, getUserName } from "@/lib/helpers/profile";
 
 export default function UserProfilePage() {
-  const { currentUser, isLoadingUser } = useUser();
+  const [selectedAvatarSrc, setSelectedAvatarSrc] = useState<string | null>(null);
+  const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
+  const { currentUser, isLoadingUser, refreshCurrentUser } = useUser();
 
   const isLoading = isLoadingUser || !currentUser;
   const userName = getUserName(currentUser);
-  const fallbackAvatarSrc = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(userName)}`;
-  const { avatarSrc, setStoredAvatar } = useProfileAvatar(
-    currentUser?.id ? `user:${currentUser.id}` : null,
-    fallbackAvatarSrc,
-  );
+  const fallbackAvatarSrc =
+    currentUser?.avatar_url?.trim() ||
+    `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(userName)}`;
+  const { isUploading, uploadAvatar } = useAvatarUpload({ refreshCurrentUser });
 
-  const handleAvatarFileSelect = async (file: File) => {
-    const nextAvatar = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result ?? ""));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-
-    setStoredAvatar(nextAvatar);
+  const handleAvatarFileSelect = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSelectedAvatarSrc(String(reader.result ?? ""));
+      setIsCropDialogOpen(true);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -43,10 +45,11 @@ export default function UserProfilePage() {
               <Skeleton className="w-20 h-20 rounded-full border-solid border-2 border-primary/50" />
             ) : (
               <EditableAvatar
-                src={avatarSrc}
+                src={fallbackAvatarSrc}
                 alt={`Foto de perfil de ${userName}`}
                 initials={userName.slice(0, 2).toUpperCase()}
                 className="size-20"
+                isUploading={isUploading}
                 onFileSelect={handleAvatarFileSelect}
               />
             )}
@@ -143,6 +146,25 @@ export default function UserProfilePage() {
         </h1>
         <TableUserSchedulings />
       </div>
+
+      <AvatarCropDialog
+        open={isCropDialogOpen}
+        imageSrc={selectedAvatarSrc}
+        isSaving={isUploading}
+        onOpenChange={(open) => {
+          setIsCropDialogOpen(open);
+          if (!open) {
+            setSelectedAvatarSrc(null);
+          }
+        }}
+        onConfirm={async (file) => {
+          const uploaded = await uploadAvatar(file);
+          if (uploaded) {
+            setIsCropDialogOpen(false);
+            setSelectedAvatarSrc(null);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ export type CurrentOwnerResponse = {
     username?: string;
     email?: string;
     status?: "owner" | "user" | "standard";
+    avatar_url?: string | null;
     professional_description?: string | null;
     professional_document?: string | null;
     professional_branch?: string | null;
