@@ -435,7 +435,7 @@ export function TableUserSchedulings() {
           </Button>
         </div>
 
-        <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <DatePickerSimple
             id="user-table-filter-start-date"
             label="Data inicial"
@@ -454,6 +454,9 @@ export function TableUserSchedulings() {
               setCurrentPage(1);
             }}
           />
+          <span className="text-center text-sm font-medium text-muted-foreground">
+            até
+          </span>
 
           <DatePickerSimple
             id="user-table-filter-end-date"
