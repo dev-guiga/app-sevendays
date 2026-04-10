@@ -7,10 +7,10 @@ class CreateUserService
     user = User.new(user_params_with_address)
 
     if user.save
-      return ServiceResult.new(success: true, payload: { user: user })
+      ServiceResult.new(success: true, payload: { user: user })
+    else
+      ServiceResult.new(success: false, payload: { user: user }, errors: user.errors, status: :unprocessable_entity)
     end
-
-    ServiceResult.new(success: false, payload: { user: user }, errors: user.errors, status: :unprocessable_entity)
   end
 
   private

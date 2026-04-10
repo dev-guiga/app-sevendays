@@ -216,7 +216,7 @@ class Owner::SchedulingsController < ApplicationController
     return raw_time if raw_time.match?(/\A([01]\d|2[0-3]):[0-5]\d\z/)
 
     match = raw_time.match(/\A([01]\d|2[0-3]):([0-5]\d):([0-5]\d)\z/)
-    return "#{match[1]}:#{match[2]}" if match
+    "#{match[1]}:#{match[2]}" if match
   end
 
   def created_at_order

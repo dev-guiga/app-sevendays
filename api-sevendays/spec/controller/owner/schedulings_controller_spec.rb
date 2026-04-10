@@ -401,13 +401,13 @@ RSpec.describe Owner::SchedulingsController, type: :controller do
 
         expect(response).to have_http_status(:ok)
         body = response.parsed_body
-        expect(body["schedulings"].map { |item| item["id"] }).to eq([older_scheduling.id, newer_scheduling.id])
+        expect(body["schedulings"].map { |item| item["id"] }).to eq([ older_scheduling.id, newer_scheduling.id ])
 
         get :index, params: { email: ordered_user.email, create_At: "desc" }, format: :json
 
         expect(response).to have_http_status(:ok)
         body = response.parsed_body
-        expect(body["schedulings"].map { |item| item["id"] }).to eq([newer_scheduling.id, older_scheduling.id])
+        expect(body["schedulings"].map { |item| item["id"] }).to eq([ newer_scheduling.id, older_scheduling.id ])
       end
     end
 
