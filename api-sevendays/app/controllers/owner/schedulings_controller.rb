@@ -253,9 +253,16 @@ class Owner::SchedulingsController < ApplicationController
 
     case sort_field
     when "user_name"
-      scope.order(Arel.sql("users.first_name #{direction}, users.last_name #{direction}, schedulings.id #{direction}"))
+      scope.order(
+        "users.first_name": direction,
+        "users.last_name": direction,
+        "schedulings.id": direction
+      )
     when "user_email"
-      scope.order(Arel.sql("users.email #{direction}, schedulings.id #{direction}"))
+      scope.order(
+        "users.email": direction,
+        "schedulings.id": direction
+      )
     when "date"
       scope.order(date: direction, time: direction, id: direction)
     when "time"
