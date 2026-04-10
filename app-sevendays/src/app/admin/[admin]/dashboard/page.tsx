@@ -1,7 +1,7 @@
 "use client";
 import { BookOpen, MapPin, PencilSimple, User } from "@phosphor-icons/react";
 
-import AvatarProfile from "@/components/Avatar";
+import { EditableAvatar } from "@/components/EditableAvatar";
 import { OwnerCreateSchedulingModal } from "@/components/OwnerCreateSchedulingModal";
 import { OwnerProfileEditModal } from "@/components/OwnerProfileEditModal";
 import { TableClients } from "@/components/TableClients";
@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { useOwnerDashboard } from "@/hooks/useOwnerDashboard";
 import { useOwnerProfileSave } from "@/hooks/useOwnerProfileSave";
+import { useProfileAvatar } from "@/hooks/useProfileAvatar";
 
 import { getOwnerName } from "@/lib/helpers/owner-dashboard";
 
@@ -33,6 +34,22 @@ export default function HomeAdmin() {
     refreshCurrentUser,
     onSuccess: () => setIsEditModalOpen(false),
   });
+  const ownerName = owner ? getOwnerName(owner) : "Profissional";
+  const { avatarSrc, setStoredAvatar } = useProfileAvatar(
+    owner?.id ? `owner:${owner.id}` : null,
+    ownerAvatar,
+  );
+
+  const handleAvatarFileSelect = async (file: File) => {
+    const nextAvatar = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+
+    setStoredAvatar(nextAvatar);
+  };
 
   return (
     <div className="w-full max-w-7xl flex flex-col items-start justify-start gap-10 sm:mx-auto mx-0 px-4">
@@ -42,9 +59,12 @@ export default function HomeAdmin() {
             {isLoading ? (
               <Skeleton className="w-20 h-20 rounded-full border-solid border-2 border-primary/50" />
             ) : (
-              <AvatarProfile
-                src={ownerAvatar}
-                className="w-20 h-20 rounded-full border-solid border-2 border-primary/50 object-cover"
+              <EditableAvatar
+                src={avatarSrc}
+                alt={`Foto de perfil de ${ownerName}`}
+                initials={ownerName.slice(0, 2).toUpperCase()}
+                className="size-20"
+                onFileSelect={handleAvatarFileSelect}
               />
             )}
           </div>
@@ -64,7 +84,7 @@ export default function HomeAdmin() {
               {isLoading ? (
                 <Skeleton className="h-8 w-56" />
               ) : (
-                <h1 className="text-2xl font-bold">{owner ? getOwnerName(owner) : "Profissional"}</h1>
+                <h1 className="text-2xl font-bold">{ownerName}</h1>
               )}
               <Separator className="h-[1px] bg-primary/50" />
             </div>

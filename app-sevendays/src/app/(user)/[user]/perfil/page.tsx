@@ -2,12 +2,13 @@
 
 import { Calendar, Envelope, IdentificationBadge, MapPin, UserIcon } from "@phosphor-icons/react";
 
+import { EditableAvatar } from "@/components/EditableAvatar";
 import { TableUserSchedulings } from "@/components/TableUserSchedulings";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import AvatarProfile from "@/components/Avatar";
 
 import { useUser } from "@/contexts/user-context";
+import { useProfileAvatar } from "@/hooks/useProfileAvatar";
 
 import { formatAddress, formatBirthDate, getUserName } from "@/lib/helpers/profile";
 
@@ -15,6 +16,23 @@ export default function UserProfilePage() {
   const { currentUser, isLoadingUser } = useUser();
 
   const isLoading = isLoadingUser || !currentUser;
+  const userName = getUserName(currentUser);
+  const fallbackAvatarSrc = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(userName)}`;
+  const { avatarSrc, setStoredAvatar } = useProfileAvatar(
+    currentUser?.id ? `user:${currentUser.id}` : null,
+    fallbackAvatarSrc,
+  );
+
+  const handleAvatarFileSelect = async (file: File) => {
+    const nextAvatar = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+
+    setStoredAvatar(nextAvatar);
+  };
 
   return (
     <div className="w-full max-w-7xl flex flex-col items-start justify-start gap-10 sm:mx-auto mx-0 px-4">
@@ -24,9 +42,12 @@ export default function UserProfilePage() {
             {isLoading ? (
               <Skeleton className="w-20 h-20 rounded-full border-solid border-2 border-primary/50" />
             ) : (
-              <AvatarProfile
-                src={`https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(getUserName(currentUser))}`}
-                className="w-20 h-20 rounded-full border-solid border-2 border-primary/50 object-cover"
+              <EditableAvatar
+                src={avatarSrc}
+                alt={`Foto de perfil de ${userName}`}
+                initials={userName.slice(0, 2).toUpperCase()}
+                className="size-20"
+                onFileSelect={handleAvatarFileSelect}
               />
             )}
           </div>
@@ -37,7 +58,7 @@ export default function UserProfilePage() {
                 <Skeleton className="h-8 w-56" />
               ) : (
                 <div>
-                  <h1 className="text-2xl font-bold">{getUserName(currentUser)}</h1>
+                  <h1 className="text-2xl font-bold">{userName}</h1>
                   <Separator className="h-[1px] bg-primary/50" />
                 </div>
               )}
